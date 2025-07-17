@@ -1,26 +1,27 @@
 <?php
 class SeevetalParser {
-    public function fetch($term) {
-        $results = [];
-        $base = 'https://www.seevetal.de/regional/veranstaltungen/sucheplus2.html?schnellauswahl=0&suchwort=';
-        $html = @file_get_contents($base . urlencode($term));
-        if (!$html) return $results;
+public function fetch($term) {
+    $results = [];
+    $baseUrl = 'https://www.seevetal.de/regional/veranstaltungen/sucheplus2.html?schnellauswahl=0&suchwort=';
+    $html = @file_get_contents($baseUrl . urlencode($term));
+    if (!$html) return $results;
+    libxml_use_internal_errors(true);
+    $dom   = new DOMDocument();
+    @$dom->loadHTML($html);
+    $xpath = new DOMXPath($dom);
 
-        libxml_use_internal_errors(true);
-        $dom = new DOMDocument();
-        @$dom->loadHTML($html);
-        $xpath = new DOMXPath($dom);
-
-        // Links zu den Detailseiten finden
-        $nodes = $xpath->query("//div[contains(@class,'searchlist_item')]//a[contains(text(),'weiterlesen')]");
-        foreach ($nodes as $a) {
-            $href = $a->getAttribute('href');
-            $url  = 'https://www.seevetal.de' . $href;
-            $data = $this->parse_detail($url);
-            $results[] = array_merge(['url' => $url], $data);
-        }
-        return $results;
+    // fange alle Detail‑Links
+    $links = $xpath->query("//a[starts-with(@href,'/regional/veranstaltungen/detail-')]");
+    foreach ($links as $a) {
+        $href = $a->getAttribute('href');
+        $url  = 'https://www.seevetal.de' . $href;
+        // parse_detail holt Titel, Datum, Ort, Beschreibung …
+        $data = $this->parse_detail($url);
+        $results[] = array_merge(['url'=>$url], $data);
     }
+    return $results;
+}
+
 
     private function parse_detail($url) {
         $html = @file_get_contents($url);
