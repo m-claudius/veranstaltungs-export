@@ -1,0 +1,513 @@
+Debug: Abrufe Suchseite https://www.seevetal.de/regional/veranstaltungen/sucheplus2.html?schnellauswahl=0&suchwort=Musik&beginn_datum=&ende_datum=&ort=0
+
+Debug: Gefundene Detail‑Links:
+
+    https://www.seevetal.de/regional/veranstaltungen/musikalischer-exit-room-kunterbuntes-musizieren-mit-boomwhackern-ein-angebot-der-musas-910026918-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/musikalischer-exit-room-kunterbuntes-musizieren-mit-boomwhackern-ein-angebot-der-musas-910026918-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/musikalischer-exit-room-kunterbuntes-musizieren-mit-boomwhackern-ein-angebot-der-musas-910026918-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/musikalischer-exit-room-kunterbuntes-musizieren-mit-boomwhackern-ein-angebot-der-musas-910026952-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/musikalischer-exit-room-kunterbuntes-musizieren-mit-boomwhackern-ein-angebot-der-musas-910026952-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/musikalischer-exit-room-kunterbuntes-musizieren-mit-boomwhackern-ein-angebot-der-musas-910026952-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/tanz-angebot-born-to-move-btm-beim-tus-fleestedt-910026913-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/tanz-angebot-born-to-move-btm-beim-tus-fleestedt-910026913-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/tanz-angebot-born-to-move-btm-beim-tus-fleestedt-910026913-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/musikalischer-exit-room-kunterbuntes-musizieren-mit-boomwhackern-ein-angebot-der-musas-910026953-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/musikalischer-exit-room-kunterbuntes-musizieren-mit-boomwhackern-ein-angebot-der-musas-910026953-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/musikalischer-exit-room-kunterbuntes-musizieren-mit-boomwhackern-ein-angebot-der-musas-910026953-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/tanz-angebot-born-to-move-btm-beim-tus-fleestedt-910026947-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/tanz-angebot-born-to-move-btm-beim-tus-fleestedt-910026947-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/tanz-angebot-born-to-move-btm-beim-tus-fleestedt-910026947-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/tanz-angebot-born-to-move-btm-beim-tus-fleestedt-910026948-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/tanz-angebot-born-to-move-btm-beim-tus-fleestedt-910026948-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/tanz-angebot-born-to-move-btm-beim-tus-fleestedt-910026948-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026699-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026699-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026699-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/pool-party-im-freibad-hittfeld-am-8-august-2025-910027108-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/pool-party-im-freibad-hittfeld-am-8-august-2025-910027108-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/buchen/pool-party-im-freibad-hittfeld-am-8-august-2025-910027108-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/pool-party-im-freibad-hittfeld-am-8-august-2025-910027108-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/40-meckelfelder-dorffest-910027120-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/40-meckelfelder-dorffest-910027120-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/40-meckelfelder-dorffest-910027120-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026700-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026700-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026700-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/the-petersens-910026882-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/the-petersens-910026882-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/the-petersens-910026882-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/5-seevetaler-rudelsingen-910027109-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/5-seevetaler-rudelsingen-910027109-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/5-seevetaler-rudelsingen-910027109-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026701-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026701-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026701-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/200-jahre-johann-strauss-das-grosse-jubilaeums-konzert-mit-der-saengerlust-fleestedt-910027110-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/200-jahre-johann-strauss-das-grosse-jubilaeums-konzert-mit-der-saengerlust-fleestedt-910027110-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/200-jahre-johann-strauss-das-grosse-jubilaeums-konzert-mit-der-saengerlust-fleestedt-910027110-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/-aber-bitte-mit-sahne--910026970-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/-aber-bitte-mit-sahne--910026970-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/-aber-bitte-mit-sahne--910026970-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026702-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026702-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026702-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/anatevka-910027014-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/anatevka-910027014-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/anatevka-910027014-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/anatevka-910027015-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/anatevka-910027015-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/anatevka-910027015-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/anatevka-910027016-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/anatevka-910027016-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/anatevka-910027016-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/zumba-christmas-party-910027018-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/zumba-christmas-party-910027018-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/zumba-christmas-party-910027018-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027019-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027019-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027019-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/6-seevetaler-rudelsingen-910027117-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/6-seevetaler-rudelsingen-910027117-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/6-seevetaler-rudelsingen-910027117-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026703-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026703-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026703-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/abi-wallenstein-blues-culture-featuring-steve-baker-martin-roettger-910026927-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/abi-wallenstein-blues-culture-featuring-steve-baker-martin-roettger-910026927-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/abi-wallenstein-blues-culture-featuring-steve-baker-martin-roettger-910026927-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/verlegt-the-rubettes-feat-bill-hurd-910026865-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/verlegt-the-rubettes-feat-bill-hurd-910026865-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/verlegt-the-rubettes-feat-bill-hurd-910026865-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027020-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027020-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027020-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027021-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027021-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027021-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027026-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027026-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027026-20200.html
+
+    Gemeinde Seevetal
+    Mo., 21.07.2025, 08:30 - 12:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/musikalischer-exit-room-kunterbuntes-musizieren-mit-boomwhackern-ein-angebot-der-musas-910026918-20200.html
+    Gemeinde Seevetal
+    Mo., 21.07.2025, 08:30 - 12:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/musikalischer-exit-room-kunterbuntes-musizieren-mit-boomwhackern-ein-angebot-der-musas-910026918-20200.html
+    Gemeinde Seevetal
+    Mo., 21.07.2025, 08:30 - 12:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/musikalischer-exit-room-kunterbuntes-musizieren-mit-boomwhackern-ein-angebot-der-musas-910026918-20200.html
+    Gemeinde Seevetal
+    Di., 22.07.2025, 08:30 - 12:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/musikalischer-exit-room-kunterbuntes-musizieren-mit-boomwhackern-ein-angebot-der-musas-910026952-20200.html
+    Gemeinde Seevetal
+    Di., 22.07.2025, 08:30 - 12:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/musikalischer-exit-room-kunterbuntes-musizieren-mit-boomwhackern-ein-angebot-der-musas-910026952-20200.html
+    Gemeinde Seevetal
+    Di., 22.07.2025, 08:30 - 12:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/musikalischer-exit-room-kunterbuntes-musizieren-mit-boomwhackern-ein-angebot-der-musas-910026952-20200.html
+    Gemeinde Seevetal
+    Di., 22.07.2025, 16:00 - 17:00 Uhr Born to Move kombiniert innovative Dance Moves mit aktueller Musik und sorgt so für jede Menge Spaß und Bewegung. Alter: ab 8 Jahre
+
+    https://www.seevetal.de/regional/veranstaltungen/tanz-angebot-born-to-move-btm-beim-tus-fleestedt-910026913-20200.html
+    Gemeinde Seevetal
+    Di., 22.07.2025, 16:00 - 17:00 Uhr Born to Move kombiniert innovative Dance Moves mit aktueller Musik und sorgt so für jede Menge Spaß und Bewegung. Alter: ab 8 Jahre
+
+    https://www.seevetal.de/regional/veranstaltungen/tanz-angebot-born-to-move-btm-beim-tus-fleestedt-910026913-20200.html
+    Gemeinde Seevetal
+    Di., 22.07.2025, 16:00 - 17:00 Uhr Born to Move kombiniert innovative Dance Moves mit aktueller Musik und sorgt so für jede Menge Spaß und Bewegung. Alter: ab 8 Jahre
+
+    https://www.seevetal.de/regional/veranstaltungen/tanz-angebot-born-to-move-btm-beim-tus-fleestedt-910026913-20200.html
+    Gemeinde Seevetal
+    Mi., 23.07.2025, 08:30 - 12:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/musikalischer-exit-room-kunterbuntes-musizieren-mit-boomwhackern-ein-angebot-der-musas-910026953-20200.html
+    Gemeinde Seevetal
+    Mi., 23.07.2025, 08:30 - 12:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/musikalischer-exit-room-kunterbuntes-musizieren-mit-boomwhackern-ein-angebot-der-musas-910026953-20200.html
+    Gemeinde Seevetal
+    Mi., 23.07.2025, 08:30 - 12:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/musikalischer-exit-room-kunterbuntes-musizieren-mit-boomwhackern-ein-angebot-der-musas-910026953-20200.html
+    Gemeinde Seevetal
+    Di., 29.07.2025, 16:00 - 17:00 Uhr Born to Move kombiniert innovative Dance Moves mit aktueller Musik und sorgt so für jede Menge Spaß und Bewegung. Alter: ab 8 Jahre
+
+    https://www.seevetal.de/regional/veranstaltungen/tanz-angebot-born-to-move-btm-beim-tus-fleestedt-910026947-20200.html
+    Gemeinde Seevetal
+    Di., 29.07.2025, 16:00 - 17:00 Uhr Born to Move kombiniert innovative Dance Moves mit aktueller Musik und sorgt so für jede Menge Spaß und Bewegung. Alter: ab 8 Jahre
+
+    https://www.seevetal.de/regional/veranstaltungen/tanz-angebot-born-to-move-btm-beim-tus-fleestedt-910026947-20200.html
+    Gemeinde Seevetal
+    Di., 29.07.2025, 16:00 - 17:00 Uhr Born to Move kombiniert innovative Dance Moves mit aktueller Musik und sorgt so für jede Menge Spaß und Bewegung. Alter: ab 8 Jahre
+
+    https://www.seevetal.de/regional/veranstaltungen/tanz-angebot-born-to-move-btm-beim-tus-fleestedt-910026947-20200.html
+    Gemeinde Seevetal
+    Di., 05.08.2025, 16:00 - 17:00 Uhr Born to Move kombiniert innovative Dance Moves mit aktueller Musik und sorgt so für jede Menge Spaß und Bewegung. Alter: ab 8 Jahre
+
+    https://www.seevetal.de/regional/veranstaltungen/tanz-angebot-born-to-move-btm-beim-tus-fleestedt-910026948-20200.html
+    Gemeinde Seevetal
+    Di., 05.08.2025, 16:00 - 17:00 Uhr Born to Move kombiniert innovative Dance Moves mit aktueller Musik und sorgt so für jede Menge Spaß und Bewegung. Alter: ab 8 Jahre
+
+    https://www.seevetal.de/regional/veranstaltungen/tanz-angebot-born-to-move-btm-beim-tus-fleestedt-910026948-20200.html
+    Gemeinde Seevetal
+    Di., 05.08.2025, 16:00 - 17:00 Uhr Born to Move kombiniert innovative Dance Moves mit aktueller Musik und sorgt so für jede Menge Spaß und Bewegung. Alter: ab 8 Jahre
+
+    https://www.seevetal.de/regional/veranstaltungen/tanz-angebot-born-to-move-btm-beim-tus-fleestedt-910026948-20200.html
+    Gemeinde Seevetal
+    Do., 07.08.2025, 17:30 Uhr Trauergruppe Meckelfeld / Trauerbegleitung Angel Wings jeden ersten Donnerstag im Monat im Jugendzentrum Meckziko, oder Einzelsitzungen möglich
+
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026699-20200.html
+    Gemeinde Seevetal
+    Do., 07.08.2025, 17:30 Uhr Trauergruppe Meckelfeld / Trauerbegleitung Angel Wings jeden ersten Donnerstag im Monat im Jugendzentrum Meckziko, oder Einzelsitzungen möglich
+
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026699-20200.html
+    Gemeinde Seevetal
+    Do., 07.08.2025, 17:30 Uhr Trauergruppe Meckelfeld / Trauerbegleitung Angel Wings jeden ersten Donnerstag im Monat im Jugendzentrum Meckziko, oder Einzelsitzungen möglich
+
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026699-20200.html
+    Gemeinde Seevetal
+    Fr., 08.08.2025, 13:00 - 18:00 Uhr Anlässlich des 50jährigen Bestehens des Hallen- und Freibades Hittfeld findet eine Poolparty für Kinder und Jugendliche im Freibad statt.Freitag, 8. August von 13.00 bis 18.00 Uhrmindestens das Seepferdchen-Abzeichen ist erforderlich sowie eine Begleitperson.Eintritt: Erwachsene: 4,00 €, Kinder: 3,00 € und Knax-Klub-Mitglieder: 2,00 €. Anmeldungen sind ab dem 11. Juli 2025, 10.00 Uhr hier online möglich. Nach Abschluss des Buchungsvorganges erhalten Sie eine Buchungsbestätigung. Diese legen Sie bitte am Veranstaltungstag an der Kasse vor. Die Bezahlung erfolgt auch direkt an der Kasse.
+
+    https://www.seevetal.de/regional/veranstaltungen/pool-party-im-freibad-hittfeld-am-8-august-2025-910027108-20200.html
+    Gemeinde Seevetal
+    Fr., 08.08.2025, 13:00 - 18:00 Uhr Anlässlich des 50jährigen Bestehens des Hallen- und Freibades Hittfeld findet eine Poolparty für Kinder und Jugendliche im Freibad statt.Freitag, 8. August von 13.00 bis 18.00 Uhrmindestens das Seepferdchen-Abzeichen ist erforderlich sowie eine Begleitperson.Eintritt: Erwachsene: 4,00 €, Kinder: 3,00 € und Knax-Klub-Mitglieder: 2,00 €. Anmeldungen sind ab dem 11. Juli 2025, 10.00 Uhr hier online möglich. Nach Abschluss des Buchungsvorganges erhalten Sie eine Buchungsbestätigung. Diese legen Sie bitte am Veranstaltungstag an der Kasse vor. Die Bezahlung erfolgt auch direkt an der Kasse.
+
+    https://www.seevetal.de/regional/veranstaltungen/pool-party-im-freibad-hittfeld-am-8-august-2025-910027108-20200.html
+    Gemeinde Seevetal
+
+
+    https://www.seevetal.de/regional/veranstaltungen/buchen/pool-party-im-freibad-hittfeld-am-8-august-2025-910027108-20200.html
+    Gemeinde Seevetal
+    Fr., 08.08.2025, 13:00 - 18:00 Uhr Anlässlich des 50jährigen Bestehens des Hallen- und Freibades Hittfeld findet eine Poolparty für Kinder und Jugendliche im Freibad statt.Freitag, 8. August von 13.00 bis 18.00 Uhrmindestens das Seepferdchen-Abzeichen ist erforderlich sowie eine Begleitperson.Eintritt: Erwachsene: 4,00 €, Kinder: 3,00 € und Knax-Klub-Mitglieder: 2,00 €. Anmeldungen sind ab dem 11. Juli 2025, 10.00 Uhr hier online möglich. Nach Abschluss des Buchungsvorganges erhalten Sie eine Buchungsbestätigung. Diese legen Sie bitte am Veranstaltungstag an der Kasse vor. Die Bezahlung erfolgt auch direkt an der Kasse.
+
+    https://www.seevetal.de/regional/veranstaltungen/pool-party-im-freibad-hittfeld-am-8-august-2025-910027108-20200.html
+    Gemeinde Seevetal
+    Fr., 29.08.2025, 16:00 Uhr - So., 31.08.2025, 19:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/40-meckelfelder-dorffest-910027120-20200.html
+    Gemeinde Seevetal
+    Fr., 29.08.2025, 16:00 Uhr - So., 31.08.2025, 19:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/40-meckelfelder-dorffest-910027120-20200.html
+    Gemeinde Seevetal
+    Fr., 29.08.2025, 16:00 Uhr - So., 31.08.2025, 19:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/40-meckelfelder-dorffest-910027120-20200.html
+    Gemeinde Seevetal
+    Do., 04.09.2025, 17:30 Uhr Trauergruppe Meckelfeld / Trauerbegleitung Angel Wings jeden ersten Donnerstag im Monat im Jugendzentrum Meckziko, oder Einzelsitzungen möglich
+
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026700-20200.html
+    Gemeinde Seevetal
+    Do., 04.09.2025, 17:30 Uhr Trauergruppe Meckelfeld / Trauerbegleitung Angel Wings jeden ersten Donnerstag im Monat im Jugendzentrum Meckziko, oder Einzelsitzungen möglich
+
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026700-20200.html
+    Gemeinde Seevetal
+    Do., 04.09.2025, 17:30 Uhr Trauergruppe Meckelfeld / Trauerbegleitung Angel Wings jeden ersten Donnerstag im Monat im Jugendzentrum Meckziko, oder Einzelsitzungen möglich
+
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026700-20200.html
+    Gemeinde Seevetal
+    Mo., 15.09.2025, 20:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/the-petersens-910026882-20200.html
+    Gemeinde Seevetal
+    Mo., 15.09.2025, 20:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/the-petersens-910026882-20200.html
+    Gemeinde Seevetal
+    Mo., 15.09.2025, 20:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/the-petersens-910026882-20200.html
+    Gemeinde Seevetal
+    Di., 16.09.2025, 19:30 Uhr Zum 5. Mal in der Burg Seevetal!Live Hits von A-Z - Alle singen mit!
+
+    https://www.seevetal.de/regional/veranstaltungen/5-seevetaler-rudelsingen-910027109-20200.html
+    Gemeinde Seevetal
+    Di., 16.09.2025, 19:30 Uhr Zum 5. Mal in der Burg Seevetal!Live Hits von A-Z - Alle singen mit!
+
+    https://www.seevetal.de/regional/veranstaltungen/5-seevetaler-rudelsingen-910027109-20200.html
+    Gemeinde Seevetal
+    Di., 16.09.2025, 19:30 Uhr Zum 5. Mal in der Burg Seevetal!Live Hits von A-Z - Alle singen mit!
+
+    https://www.seevetal.de/regional/veranstaltungen/5-seevetaler-rudelsingen-910027109-20200.html
+    Gemeinde Seevetal
+    Do., 02.10.2025, 17:30 Uhr Trauergruppe Meckelfeld / Trauerbegleitung Angel Wings jeden ersten Donnerstag im Monat im Jugendzentrum Meckziko, oder Einzelsitzungen möglich
+
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026701-20200.html
+    Gemeinde Seevetal
+    Do., 02.10.2025, 17:30 Uhr Trauergruppe Meckelfeld / Trauerbegleitung Angel Wings jeden ersten Donnerstag im Monat im Jugendzentrum Meckziko, oder Einzelsitzungen möglich
+
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026701-20200.html
+    Gemeinde Seevetal
+    Do., 02.10.2025, 17:30 Uhr Trauergruppe Meckelfeld / Trauerbegleitung Angel Wings jeden ersten Donnerstag im Monat im Jugendzentrum Meckziko, oder Einzelsitzungen möglich
+
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026701-20200.html
+    Gemeinde Seevetal
+    Fr., 03.10.2025, 17:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/200-jahre-johann-strauss-das-grosse-jubilaeums-konzert-mit-der-saengerlust-fleestedt-910027110-20200.html
+    Gemeinde Seevetal
+    Fr., 03.10.2025, 17:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/200-jahre-johann-strauss-das-grosse-jubilaeums-konzert-mit-der-saengerlust-fleestedt-910027110-20200.html
+    Gemeinde Seevetal
+    Fr., 03.10.2025, 17:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/200-jahre-johann-strauss-das-grosse-jubilaeums-konzert-mit-der-saengerlust-fleestedt-910027110-20200.html
+    Gemeinde Seevetal
+    Sa., 25.10.2025, 15:30 Uhr Konzert bei Kaffee und Kuchen mit dem Blasorchester des TV Meckelfeld
+
+    https://www.seevetal.de/regional/veranstaltungen/-aber-bitte-mit-sahne--910026970-20200.html
+    Gemeinde Seevetal
+    Sa., 25.10.2025, 15:30 Uhr Konzert bei Kaffee und Kuchen mit dem Blasorchester des TV Meckelfeld
+
+    https://www.seevetal.de/regional/veranstaltungen/-aber-bitte-mit-sahne--910026970-20200.html
+    Gemeinde Seevetal
+    Sa., 25.10.2025, 15:30 Uhr Konzert bei Kaffee und Kuchen mit dem Blasorchester des TV Meckelfeld
+
+    https://www.seevetal.de/regional/veranstaltungen/-aber-bitte-mit-sahne--910026970-20200.html
+    Gemeinde Seevetal
+    Do., 06.11.2025, 17:30 Uhr Trauergruppe Meckelfeld / Trauerbegleitung Angel Wings jeden ersten Donnerstag im Monat im Jugendzentrum Meckziko, oder Einzelsitzungen möglich
+
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026702-20200.html
+    Gemeinde Seevetal
+    Do., 06.11.2025, 17:30 Uhr Trauergruppe Meckelfeld / Trauerbegleitung Angel Wings jeden ersten Donnerstag im Monat im Jugendzentrum Meckziko, oder Einzelsitzungen möglich
+
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026702-20200.html
+    Gemeinde Seevetal
+    Do., 06.11.2025, 17:30 Uhr Trauergruppe Meckelfeld / Trauerbegleitung Angel Wings jeden ersten Donnerstag im Monat im Jugendzentrum Meckziko, oder Einzelsitzungen möglich
+
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026702-20200.html
+    Gemeinde Seevetal
+    Fr., 14.11.2025, 20:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/anatevka-910027014-20200.html
+    Gemeinde Seevetal
+    Fr., 14.11.2025, 20:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/anatevka-910027014-20200.html
+    Gemeinde Seevetal
+    Fr., 14.11.2025, 20:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/anatevka-910027014-20200.html
+    Gemeinde Seevetal
+    Sa., 15.11.2025, 20:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/anatevka-910027015-20200.html
+    Gemeinde Seevetal
+    Sa., 15.11.2025, 20:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/anatevka-910027015-20200.html
+    Gemeinde Seevetal
+    Sa., 15.11.2025, 20:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/anatevka-910027015-20200.html
+    Gemeinde Seevetal
+    So., 16.11.2025, 20:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/anatevka-910027016-20200.html
+    Gemeinde Seevetal
+    So., 16.11.2025, 20:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/anatevka-910027016-20200.html
+    Gemeinde Seevetal
+    So., 16.11.2025, 20:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/anatevka-910027016-20200.html
+    Gemeinde Seevetal
+    Sa., 29.11.2025, 17:00 - 21:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/zumba-christmas-party-910027018-20200.html
+    Gemeinde Seevetal
+    Sa., 29.11.2025, 17:00 - 21:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/zumba-christmas-party-910027018-20200.html
+    Gemeinde Seevetal
+    Sa., 29.11.2025, 17:00 - 21:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/zumba-christmas-party-910027018-20200.html
+    Gemeinde Seevetal
+    Di., 02.12.2025, 19:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027019-20200.html
+    Gemeinde Seevetal
+    Di., 02.12.2025, 19:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027019-20200.html
+    Gemeinde Seevetal
+    Di., 02.12.2025, 19:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027019-20200.html
+    Gemeinde Seevetal
+    Di., 02.12.2025, 19:30 Uhr Zum 6. Mal in der Burg Seevetal!Live Hits von A-Z - Alle singen mit!
+
+    https://www.seevetal.de/regional/veranstaltungen/6-seevetaler-rudelsingen-910027117-20200.html
+    Gemeinde Seevetal
+    Di., 02.12.2025, 19:30 Uhr Zum 6. Mal in der Burg Seevetal!Live Hits von A-Z - Alle singen mit!
+
+    https://www.seevetal.de/regional/veranstaltungen/6-seevetaler-rudelsingen-910027117-20200.html
+    Gemeinde Seevetal
+    Di., 02.12.2025, 19:30 Uhr Zum 6. Mal in der Burg Seevetal!Live Hits von A-Z - Alle singen mit!
+
+    https://www.seevetal.de/regional/veranstaltungen/6-seevetaler-rudelsingen-910027117-20200.html
+    Gemeinde Seevetal
+    Do., 04.12.2025, 17:30 Uhr Trauergruppe Meckelfeld / Trauerbegleitung Angel Wings jeden ersten Donnerstag im Monat im Jugendzentrum Meckziko, oder Einzelsitzungen möglich
+
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026703-20200.html
+    Gemeinde Seevetal
+    Do., 04.12.2025, 17:30 Uhr Trauergruppe Meckelfeld / Trauerbegleitung Angel Wings jeden ersten Donnerstag im Monat im Jugendzentrum Meckziko, oder Einzelsitzungen möglich
+
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026703-20200.html
+    Gemeinde Seevetal
+    Do., 04.12.2025, 17:30 Uhr Trauergruppe Meckelfeld / Trauerbegleitung Angel Wings jeden ersten Donnerstag im Monat im Jugendzentrum Meckziko, oder Einzelsitzungen möglich
+
+    https://www.seevetal.de/regional/veranstaltungen/trauergruppe-meckelfeld-angel-wings-910026703-20200.html
+    Gemeinde Seevetal
+    Do., 18.12.2025, 20:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/abi-wallenstein-blues-culture-featuring-steve-baker-martin-roettger-910026927-20200.html
+    Gemeinde Seevetal
+    Do., 18.12.2025, 20:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/abi-wallenstein-blues-culture-featuring-steve-baker-martin-roettger-910026927-20200.html
+    Gemeinde Seevetal
+    Do., 18.12.2025, 20:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/abi-wallenstein-blues-culture-featuring-steve-baker-martin-roettger-910026927-20200.html
+    Gemeinde Seevetal
+    Sa., 17.01.2026, 20:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/verlegt-the-rubettes-feat-bill-hurd-910026865-20200.html
+    Gemeinde Seevetal
+    Sa., 17.01.2026, 20:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/verlegt-the-rubettes-feat-bill-hurd-910026865-20200.html
+    Gemeinde Seevetal
+    Sa., 17.01.2026, 20:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/verlegt-the-rubettes-feat-bill-hurd-910026865-20200.html
+    Gemeinde Seevetal
+    Di., 03.03.2026, 19:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027020-20200.html
+    Gemeinde Seevetal
+    Di., 03.03.2026, 19:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027020-20200.html
+    Gemeinde Seevetal
+    Di., 03.03.2026, 19:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027020-20200.html
+    Gemeinde Seevetal
+    Di., 16.06.2026, 19:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027021-20200.html
+    Gemeinde Seevetal
+    Di., 16.06.2026, 19:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027021-20200.html
+    Gemeinde Seevetal
+    Di., 16.06.2026, 19:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027021-20200.html
+    Gemeinde Seevetal
+    Di., 08.09.2026, 19:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027026-20200.html
+    Gemeinde Seevetal
+    Di., 08.09.2026, 19:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027026-20200.html
+    Gemeinde Seevetal
+    Di., 08.09.2026, 19:30 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/seevetaler-rudelsingen-910027026-20200.html 
+
+Kultur 🔍
+
+Debug: Abrufe Suchseite https://www.seevetal.de/regional/veranstaltungen/sucheplus2.html?schnellauswahl=0&suchwort=Kultur&beginn_datum=&ende_datum=&ort=0
+
+Debug: Gefundene Detail‑Links:
+
+    https://www.seevetal.de/regional/veranstaltungen/kinderyoga-im-aki-am-schulteich-910027000-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/kinderyoga-im-aki-am-schulteich-910027000-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/kinderyoga-im-aki-am-schulteich-910027000-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/kinderyoga-im-aki-am-schulteich-910027001-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/kinderyoga-im-aki-am-schulteich-910027001-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/kinderyoga-im-aki-am-schulteich-910027001-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/kinderyoga-im-aki-am-schulteich-910027002-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/kinderyoga-im-aki-am-schulteich-910027002-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/kinderyoga-im-aki-am-schulteich-910027002-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/sitzung-des-ausschusses-fuer-mobilitaet-oepnv-kultur-und-naherholung-910027081-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/sitzung-des-ausschusses-fuer-mobilitaet-oepnv-kultur-und-naherholung-910027081-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/sitzung-des-ausschusses-fuer-mobilitaet-oepnv-kultur-und-naherholung-910027081-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/sitzung-des-ausschusses-fuer-mobilitaet-oepnv-kultur-und-naherholung-910027095-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/sitzung-des-ausschusses-fuer-mobilitaet-oepnv-kultur-und-naherholung-910027095-20200.html
+    https://www.seevetal.de/regional/veranstaltungen/sitzung-des-ausschusses-fuer-mobilitaet-oepnv-kultur-und-naherholung-910027095-20200.html
+
+    Gemeinde Seevetal
+    Mi., 23.07.2025, 10:30 - 12:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/kinderyoga-im-aki-am-schulteich-910027000-20200.html
+    Gemeinde Seevetal
+    Mi., 23.07.2025, 10:30 - 12:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/kinderyoga-im-aki-am-schulteich-910027000-20200.html
+    Gemeinde Seevetal
+    Mi., 23.07.2025, 10:30 - 12:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/kinderyoga-im-aki-am-schulteich-910027000-20200.html
+    Gemeinde Seevetal
+    Do., 24.07.2025, 10:30 - 12:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/kinderyoga-im-aki-am-schulteich-910027001-20200.html
+    Gemeinde Seevetal
+    Do., 24.07.2025, 10:30 - 12:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/kinderyoga-im-aki-am-schulteich-910027001-20200.html
+    Gemeinde Seevetal
+    Do., 24.07.2025, 10:30 - 12:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/kinderyoga-im-aki-am-schulteich-910027001-20200.html
+    Gemeinde Seevetal
+    Fr., 25.07.2025, 10:30 - 12:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/kinderyoga-im-aki-am-schulteich-910027002-20200.html
+    Gemeinde Seevetal
+    Fr., 25.07.2025, 10:30 - 12:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/kinderyoga-im-aki-am-schulteich-910027002-20200.html
+    Gemeinde Seevetal
+    Fr., 25.07.2025, 10:30 - 12:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/kinderyoga-im-aki-am-schulteich-910027002-20200.html
+    Gemeinde Seevetal
+    Mo., 22.09.2025, 17:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/sitzung-des-ausschusses-fuer-mobilitaet-oepnv-kultur-und-naherholung-910027081-20200.html
+    Gemeinde Seevetal
+    Mo., 22.09.2025, 17:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/sitzung-des-ausschusses-fuer-mobilitaet-oepnv-kultur-und-naherholung-910027081-20200.html
+    Gemeinde Seevetal
+    Mo., 22.09.2025, 17:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/sitzung-des-ausschusses-fuer-mobilitaet-oepnv-kultur-und-naherholung-910027081-20200.html
+    Gemeinde Seevetal
+    Do., 20.11.2025, 17:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/sitzung-des-ausschusses-fuer-mobilitaet-oepnv-kultur-und-naherholung-910027095-20200.html
+    Gemeinde Seevetal
+    Do., 20.11.2025, 17:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/sitzung-des-ausschusses-fuer-mobilitaet-oepnv-kultur-und-naherholung-910027095-20200.html
+    Gemeinde Seevetal
+    Do., 20.11.2025, 17:00 Uhr
+
+    https://www.seevetal.de/regional/veranstaltungen/sitzung-des-ausschusses-fuer-mobilitaet-oepnv-kultur-und-naherholung-910027095-20200.html 

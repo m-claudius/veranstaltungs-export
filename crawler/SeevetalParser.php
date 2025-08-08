@@ -1,33 +1,46 @@
 <?php
 class SeevetalParser {
-public function fetch($term) {
-    $results = [];
-    $baseUrl = 'https://www.seevetal.de/regional/veranstaltungen/sucheplus2.html?schnellauswahl=0&suchwort=';
-    $html = @file_get_contents($baseUrl . urlencode($term));
-    if (!$html) return $results;
-    libxml_use_internal_errors(true);
-    $dom   = new DOMDocument();
-    @$dom->loadHTML($html);
-    $xpath = new DOMXPath($dom);
+    public function fetch($term) {
+        $results = [];
 
-    // fange alle Detail‑Links
-    $links = $xpath->query("//a[starts-with(@href,'/regional/veranstaltungen/detail-')]");
-    foreach ($links as $a) {
-        $href = $a->getAttribute('href');
-        $url  = 'https://www.seevetal.de' . $href;
-        // parse_detail holt Titel, Datum, Ort, Beschreibung …
-        $data = $this->parse_detail($url);
-        $results[] = array_merge(['url'=>$url], $data);
+        // Vollständige Such-URL
+        $baseUrl = 'https://www.seevetal.de/regional/veranstaltungen/sucheplus2.html';
+        $query   = http_build_query([
+            'schnellauswahl' => 0,
+            'suchwort'       => $term,
+            'beginn_datum'   => '',
+            'ende_datum'     => '',
+            'ort'            => 0,
+        ]);
+        $html = @file_get_contents("$baseUrl?$query");
+        if (!$html) {
+            return $results;
+        }
+
+        // Alle Detail-Links per Regex extrahieren
+        if (preg_match_all('#href="(/regional/veranstaltungen/detail-[^"]+)"#', $html, $m)) {
+            $hrefs = array_unique($m[1]);
+        } else {
+            $hrefs = [];
+        }
+
+        foreach ($hrefs as $href) {
+            $url  = 'https://www.seevetal.de' . $href;
+            $data = $this->parse_detail($url);
+            if (!empty($data['title'])) {
+                $results[] = array_merge(['url' => $url], $data);
+            }
+        }
+
+        return $results;
     }
-    return $results;
-}
-
 
     private function parse_detail($url) {
         $html = @file_get_contents($url);
         if (!$html) return [];
 
-        $dom = new DOMDocument();
+        $dom   = new DOMDocument();
+        libxml_use_internal_errors(true);
         @$dom->loadHTML($html);
         $xpath = new DOMXPath($dom);
 

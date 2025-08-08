@@ -18,9 +18,9 @@ function ve_render_admin_page() {
     echo '</form>';
 
     if (!empty($_POST['search_terms'])) {
-        $terms = preg_split('/[,\s]+/', $_POST['search_terms']);
+        $terms = preg_split('/[,\s]+/', trim($_POST['search_terms']));
         foreach ($terms as $term) {
-            $id = preg_replace('/[^a-z0-9]/i', '', $term);
+            $id = preg_replace('/[^a-z0-9]/i', '', strtolower($term));
             echo "<p><strong>" . esc_html($term) . "</strong> ";
             echo "<span class='ve-lupe' data-term='" . esc_attr($term) . "' style='cursor:pointer;color:#007cba;'>🔍</span></p>";
             echo "<div id='result-$id'></div>";
