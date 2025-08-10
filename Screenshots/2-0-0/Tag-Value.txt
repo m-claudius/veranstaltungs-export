@@ -1,0 +1,33 @@
+<event>
+#Veranstaltungstitel#
+Candlelight Serenade "150 Jahre Posaunenchor Ohlendorf" mit dem Posaunenchor Ohlendorf
+
+<dtstart>
+#Datum#  #Uhrzeit#
+Fr., 22.08.2025, 19:30 Uhr
+
+<description>
+#Beschreibung#
+Die Veranstaltung zählt zu den besonderen Höhepunkten des Posaunenchores im Kalenderjahr. Ein sorgfältig ausgewähltes Programm steht immer unter einem Thema. Dabei wechseln sich Textlesungen, Liedersingen und musikalische Beiträge des Posaunenchores ab. Zum Thema gibt es einen geistlichen Input. Der Abend ist auch dadurch gekennzeichnet, dass die Zuhörer in gemütlicher Athmosphäre bei Getränken, Snacks, Kerzenlicht und Illumination des Gartens beieinander sind.
+
+<categories>
+#Rubrik#
+Musik / Konzerte / Kabarett
+Kirchliche Veranstaltungen
+Sonstiges
+
+<venue>
+#Veranstaltungsort#
+Landeskirchliche Gemeinschaft Jugend- und Gemeinschaftshaus
+Missionsweg 11
+21220 Seevetal
+
+<organizer>
+#Veranstalter#
+Landeskirchliche Gemeinschaft und Posaunenchor Ohlendorf
+Missionsweg 11, 21220 Seevetal
+
+#Kontaktdaten#
+Telefon: +49  4185 3353
+E-Mail: bur.grote@gmail.com
+Homepage: lkg-ohlendorf.wir-e.de
