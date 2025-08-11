@@ -1,0 +1,356 @@
+diff --git a/includes/class-tec-importer.php b/includes/class-tec-importer.php
+new file mode 100644
+index 0000000..b5313a1
+--- /dev/null
++++ b/includes/class-tec-importer.php
+@@ -0,0 +1,409 @@
++<?php
++/**
++ * Minimaler TEC-Importer für Veranstaltungs-Export
++ *
++ * Erwartetes Datenschema (ein Event) – Array:
++ * [
++ *   'event' => [
++ *      'title'       => (string),
++ *      'description' => (string, optional),
++ *      'start'       => '2025-08-22 19:30:00',
++ *      'end'         => '2025-08-22 21:30:00',
++ *      'timezone'    => 'Europe/Berlin',
++ *      'cost'        => (string|float|null),
++ *      'external_url'=> (string|null),
++ *      'image_url'   => (string|null)
++ *   ],
++ *   'venue' => [
++ *      'name'    => (string|null),
++ *      'address' => (string|null),
++ *      'city'    => (string|null),
++ *      'zip'     => (string|null)
++ *   ],
++ *   'organizer' => [
++ *      'name'  => (string|null),
++ *      'email' => (string|null),
++ *      'phone' => (string|null)
++ *   ],
++ *   'source' => [
++ *      'detail_url' => (string) // eindeutige Quelle
++ *   ]
++ * ]
++ *
++ * Hinweis:
++ * - Wir nutzen grundlegende Meta-Keys von The Events Calendar (CPT "tribe_events").
++ * - Felder sind konservativ gewählt, damit es in den meisten TEC-Versionen läuft.
++ */
++
++if ( ! defined( 'ABSPATH' ) ) {
++    exit;
++}
++
++class Seevetal_TEC_Importer {
++
++    /**
++     * Importiert eine Menge Events
++     *
++     * @param array $events Array von Event-Arrays (Schema oben)
++     * @param array $opts   ['dry_run'=>bool,'log'=>bool]
++     * @return array summary
++     */
++    public static function import_batch( array $events, array $opts = [] ) : array {
++        $dry = ! empty( $opts['dry_run'] );
++        $log = ! empty( $opts['log'] );
++
++        $summary = ['imported'=>0,'updated'=>0,'failed'=>0,'errors'=>[]];
++
++        foreach ( $events as $idx => $payload ) {
++            try {
++                if ( $dry ) {
++                    if ( $log ) error_log('[TEC Importer] Dry-run: ' . wp_json_encode( $payload ));
++                    $summary['imported']++;
++                    continue;
++                }
++                $res = self::import_one( $payload, $log );
++                $summary[ $res ]++;
++            } catch ( \Throwable $e ) {
++                $summary['failed']++;
++                $summary['errors'][] = $e->getMessage();
++                if ( $log ) error_log('[TEC Importer] Fehler: ' . $e->getMessage());
++            }
++        }
++        return $summary;
++    }
++
++    /**
++     * Importiert EIN Event (create|update)
++     * @param array $data
++     * @param bool $log
++     * @return string 'imported'|'updated'
++     */
++    public static function import_one( array $data, bool $log = false ) : string {
++        $event     = $data['event']     ?? [];
++        $venue     = $data['venue']     ?? [];
++        $organizer = $data['organizer'] ?? [];
++        $source    = $data['source']    ?? [];
++
++        if ( empty( $source['detail_url'] ) ) {
++            throw new \RuntimeException('Quelle (detail_url) fehlt.');
++        }
++
++        // Schon vorhandenes Event anhand eindeutiger Source-URL finden
++        $existing_id = self::find_event_by_source( $source['detail_url'] );
++
++        // Venue anlegen/ermitteln
++        $venue_id = ! empty( $venue ) ? self::upsert_venue( $venue, $log ) : 0;
++        // Organizer anlegen/ermitteln
++        $organizer_id = ! empty( $organizer ) ? self::upsert_organizer( $organizer, $log ) : 0;
++
++        // Post-Daten
++        $postarr = [
++            'post_type'   => 'tribe_events',
++            'post_status' => 'publish',
++            'post_title'  => wp_strip_all_tags( $event['title'] ?? '' ),
++            'post_content'=> $event['description'] ?? '',
++        ];
++
++        if ( $existing_id ) {
++            $postarr['ID'] = $existing_id;
++            $post_id = wp_update_post( $postarr, true );
++            $mode = 'updated';
++        } else {
++            $post_id = wp_insert_post( $postarr, true );
++            $mode = 'imported';
++        }
++
++        if ( is_wp_error( $post_id ) ) {
++            throw new \RuntimeException('Event konnte nicht gespeichert werden: ' . $post_id->get_error_message());
++        }
++
++        // Start/Ende vorbereiten
++        $tz   = $event['timezone'] ?? wp_timezone_string();
++        $tz   = $tz ?: 'Europe/Berlin';
++        $from = self::normalize_datetime( $event['start'] ?? '', $tz );
++        $to   = self::normalize_datetime( $event['end']   ?? '', $tz, $from );
++
++        // Datums-Metas (für TEC)
++        update_post_meta( $post_id, '_EventStartDate',       $from['local'] );
++        update_post_meta( $post_id, '_EventEndDate',         $to['local'] );
++        update_post_meta( $post_id, '_EventStartDateUTC',    $from['utc'] );
++        update_post_meta( $post_id, '_EventEndDateUTC',      $to['utc'] );
++        update_post_meta( $post_id, '_EventTimezone',        $tz );
++
++        if ( $venue_id )     update_post_meta( $post_id, '_EventVenueID',     $venue_id );
++        if ( $organizer_id ) update_post_meta( $post_id, '_EventOrganizerID', $organizer_id );
++
++        if ( ! empty( $event['external_url'] ) ) {
++            update_post_meta( $post_id, '_EventURL', esc_url_raw( $event['external_url'] ) );
++        }
++        if ( isset( $event['cost'] ) && $event['cost'] !== '' ) {
++            update_post_meta( $post_id, '_EventCost', (string)$event['cost'] );
++        }
++
++        // Bild laden (optional)
++        if ( ! empty( $event['image_url'] ) ) {
++            self::maybe_attach_image( $post_id, $event['image_url'], $log );
++        }
++
++        // Quelle merken (zur Duplikat-Erkennung)
++        update_post_meta( $post_id, 've_source_url', esc_url_raw( $source['detail_url'] ) );
++
++        if ( $log ) error_log( sprintf('[TEC Importer] %s #%d: %s', strtoupper($mode), $post_id, get_the_title($post_id) ) );
++        return $mode;
++    }
++
++    /** Sucht Event anhand der gespeicherten Source-URL */
++    protected static function find_event_by_source( string $url ) : int {
++        $q = new WP_Query([
++            'post_type'  => 'tribe_events',
++            'post_status'=> 'any',
++            'meta_key'   => 've_source_url',
++            'meta_value' => $url,
++            'fields'     => 'ids',
++            'posts_per_page' => 1,
++            'no_found_rows'  => true,
++        ]);
++        return ($q->have_posts()) ? (int)$q->posts[0] : 0;
++    }
++
++    /** Venue anlegen/aktualisieren (rudimentär, aber robust) */
++    protected static function upsert_venue( array $v, bool $log ) : int {
++        $name = trim( $v['name'] ?? '' );
++        if ( $name === '' ) return 0;
++
++        // Einfachster Weg: wenn ein Venue gleichen Namens existiert, nutze es.
++        $existing = get_page_by_title( $name, OBJECT, 'tribe_venue' );
++        if ( $existing ) {
++            $venue_id = (int)$existing->ID;
++        } else {
++            $venue_id = wp_insert_post([
++                'post_type'   => 'tribe_venue',
++                'post_status' => 'publish',
++                'post_title'  => $name,
++            ], true );
++            if ( is_wp_error( $venue_id ) ) return 0;
++        }
++        // Meta aktualisieren
++        if ( ! empty( $v['address'] ) ) update_post_meta( $venue_id, '_VenueAddress', $v['address'] );
++        if ( ! empty( $v['city'] ) )    update_post_meta( $venue_id, '_VenueCity',    $v['city'] );
++        if ( ! empty( $v['zip'] ) )     update_post_meta( $venue_id, '_VenueZip',     $v['zip'] );
++        return (int)$venue_id;
++    }
++
++    /** Organizer anlegen/aktualisieren (rudimentär) */
++    protected static function upsert_organizer( array $o, bool $log ) : int {
++        $name = trim( $o['name'] ?? '' );
++        if ( $name === '' ) return 0;
++
++        $existing = get_page_by_title( $name, OBJECT, 'tribe_organizer' );
++        if ( $existing ) {
++            $org_id = (int)$existing->ID;
++        } else {
++            $org_id = wp_insert_post([
++                'post_type'   => 'tribe_organizer',
++                'post_status' => 'publish',
++                'post_title'  => $name,
++            ], true );
++            if ( is_wp_error( $org_id ) ) return 0;
++        }
++        if ( ! empty( $o['email'] ) ) update_post_meta( $org_id, '_OrganizerEmail', sanitize_email( $o['email'] ) );
++        if ( ! empty( $o['phone'] ) ) update_post_meta( $org_id, '_OrganizerPhone', sanitize_text_field( $o['phone'] ) );
++        return (int)$org_id;
++    }
++
++    /** Normalisiert Datum/Zeit, liefert local & utc Strings */
++    protected static function normalize_datetime( string $dt, string $tz, array $fallbackFrom = null ) : array {
++        if ( ! $dt ) {
++            // fallback: +2h nach Start
++            if ( $fallbackFrom ) return $fallbackFrom;
++            $dt = current_time('mysql');
++        }
++        try {
++            $z = new DateTimeZone( $tz ?: 'Europe/Berlin' );
++            $d = new DateTime( $dt, $z );
++        } catch (\Throwable $e) {
++            $z = new DateTimeZone('Europe/Berlin');
++            $d = new DateTime( current_time('mysql'), $z );
++        }
++        $utc = clone $d; $utc->setTimezone( new DateTimeZone('UTC') );
++        return [
++            'local' => $d->format('Y-m-d H:i:s'),
++            'utc'   => $utc->format('Y-m-d H:i:s'),
++        ];
++    }
++
++    /** Bild herunterladen & als Featured Image setzen */
++    protected static function maybe_attach_image( int $post_id, string $url, bool $log ) : void {
++        if ( ! filter_var( $url, FILTER_VALIDATE_URL ) ) return;
++        // Bereits gesetzt?
++        if ( has_post_thumbnail( $post_id ) ) return;
++
++        require_once ABSPATH . 'wp-admin/includes/image.php';
++        require_once ABSPATH . 'wp-admin/includes/file.php';
++        require_once ABSPATH . 'wp-admin/includes/media.php';
++
++        $att_id = media_sideload_image( $url, $post_id, null, 'id' );
++        if ( is_wp_error( $att_id ) ) {
++            if ( $log ) error_log('[TEC Importer] Bild-Download fehlgeschlagen: ' . $att_id->get_error_message());
++            return;
++        }
++        set_post_thumbnail( $post_id, (int)$att_id );
++    }
++}
+diff --git a/veranstaltungs-export.php b/veranstaltungs-export.php
+index 3b1a3c9..a6f5d21 100644
+--- a/veranstaltungs-export.php
++++ b/veranstaltungs-export.php
+@@ -1,10 +1,27 @@
+ <?php
+ // Plugin Header … (belassen)
+ 
+ // … bestehende Includes …
+ 
++// === BEGIN V2.0.1: TEC-Importer laden ===
++require_once __DIR__ . '/includes/class-tec-importer.php';
++// === END V2.0.1 ===
++
+ // Hauptklasse
+ class SeevetalExporter {
+ 
+     public function __construct() {
+         // … dein bisheriger Code …
+     }
++
++    // === BEGIN V2.0.1: Admin-Post Handler für TEC-Import ===
++}
++
++// Admin-Post (außerhalb der Klasse, damit statischer Callback funktioniert)
++add_action( 'admin_post_ve_import_tec', [ 'SeevetalExporter', 'handle_import_to_tec' ] );
++
++class SeevetalExporter {
++    public static function handle_import_to_tec() {
++        if ( ! current_user_can( 'manage_options' ) ) {
++            wp_die( 'Keine Berechtigung' );
++        }
++        check_admin_referer( 've_import_tec' );
++
++        $detail_url = isset($_GET['url']) ? esc_url_raw($_GET['url']) : '';
++        if ( ! $detail_url ) {
++            wp_safe_redirect( admin_url( 'admin.php?page=veranstaltungs-export&ve_msg=no_url' ) );
++            exit;
++        }
++        // Parser laden und Detail parsen -> JSON Schema
++        require_once __DIR__ . '/crawler/SeevetalParser.php';
++        $parser = new SeevetalParser();
++        // PASSE DIE METHODENBEZEICHNUNG AN, falls deine Methode anders heißt:
++        if ( method_exists( $parser, 'parse_detail_to_json' ) ) {
++            $event = $parser->parse_detail_to_json( $detail_url );
++        } else {
++            // Fallback: ggf. eigene Methode, dann hier in Schema transformieren
++            $raw   = $parser->parse_detail_page( $detail_url );
++            $event = is_array($raw) ? $raw : [];
++        }
++        if ( empty( $event ) || ! is_array( $event ) ) {
++            wp_safe_redirect( add_query_arg( 've_msg', 'parse_failed', wp_get_referer() ?: admin_url( 'admin.php?page=veranstaltungs-export' ) ) );
++            exit;
++        }
++        $summary = Seevetal_TEC_Importer::import_batch( [ $event ], [ 'dry_run' => false, 'log' => true ] );
++        $q = [
++            've_msg'   => 'import_done',
++            'imported' => $summary['imported'] ?? 0,
++            'updated'  => $summary['updated']  ?? 0,
++            'failed'   => $summary['failed']   ?? 0,
++        ];
++        wp_safe_redirect( add_query_arg( $q, wp_get_referer() ?: admin_url( 'admin.php?page=veranstaltungs-export' ) ) );
++        exit;
++    }
++    // === END V2.0.1 ===
+ }
+diff --git a/admin/menu.php b/admin/menu.php
+index 4a8f1d0..9c7a6a2 100644
+--- a/admin/menu.php
++++ b/admin/menu.php
+@@ -180,12 +180,34 @@
+     </tbody>
+ </table>
+ 
+-<p class="submit">
+-    <a href="<?php echo esc_url( $detail_url ); ?>" target="_blank" class="button">Externe Seite öffnen</a>
+-    <a href="#" class="button button-primary">In The Events Calendar importieren</a>
+-</p>
++<?php
++// === BEGIN V2.0.1: Import-Button an admin-post anbinden ===
++// $detail_url MUSS hier die Detail-URL der aktuell angezeigten Veranstaltung sein.
++// Falls deine Variable anders heißt, entsprechenden Namen unten einsetzen.
++$import_url = wp_nonce_url(
++    admin_url( 'admin-post.php?action=ve_import_tec&url=' . rawurlencode( $detail_url ) ),
++    've_import_tec'
++);
++?>
++<p class="submit">
++    <a href="<?php echo esc_url( $detail_url ); ?>" target="_blank" class="button">Externe Seite öffnen</a>
++    <a href="<?php echo esc_url( $import_url ); ?>" class="button button-primary">
++        In The Events Calendar importieren
++    </a>
++</p>
++<!-- === END V2.0.1 === -->
+ 
+ <?php
+ // … Rest deiner Admin-Seite …
+ ?>

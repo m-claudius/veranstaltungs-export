@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Veranstaltungs Export mit Tag‑Matching
  * Description: Crawlt Events von Gemeinde Seevetal, matched Tags und zeigt alle Properties inkl. Bild.
- * Version: 1.6.3
- * Author: ChatGPT
+ * Version: 2.0.1
+ * Author: Matthias Clausen
  */
 
 if (!defined('ABSPATH')) {
@@ -13,9 +13,13 @@ if (!defined('ABSPATH')) {
 class SeevetalExporter {
     private $option_name = 've_search_terms';
 
+    require_once __DIR__ . '/includes/class-tec-importer.php';
+
     public function __construct() {
         add_action('admin_menu', [$this, 'add_admin_menu']);
         add_action('admin_post_ve_save_terms', [$this, 'save_terms']);
+        add_action('admin_post_ve_import_tec', ['SeevetalExporter', 'handle_import_to_tec']);
+
     }
 
     public function add_admin_menu() {
@@ -155,6 +159,51 @@ class SeevetalExporter {
         }
         return $found;
     }
+
+        /** Einzelnes Event aus Detail-URL parsen und in TEC importieren */
+    public static function handle_import_to_tec() {
+        if ( ! current_user_can('manage_options')) {
+            wp_die('Keine Berechtigung');
+        }
+
+        check_admin_referer('ve_import_tec');
+
+        $detail_url = isset($_GET['url']) ? esc_url_raw($_GET['url']) : '';
+        if (!$detail_url) {
+            wp_safe_redirect( admin_url('admin.php?page=veranstaltungs-export&ve_msg=no_url') );
+            exit;
+        }
+
+        // Parser laden
+        // require_once __DIR__ . '/crawler/SeevetalParser.php';
+        $parser = new SeevetalParser();
+
+        // <- WICHTIG: benutze hier die richtige Methode/Signatur aus deinem Parser!
+        // Erwartet wird ein Array im JSON-Schema aus unserem letzten Schritt.
+        // Beispielname (bitte ggf. anpassen):
+        $event = $parser->parse_detail_to_json($detail_url);
+
+        if (empty($event) || !is_array($event)) {
+            wp_safe_redirect( add_query_arg('ve_msg','parse_failed', wp_get_referer() ?: admin_url('admin.php?page=veranstaltungs-export')) );
+            exit;
+        }
+
+        $summary = Seevetal_TEC_Importer::import_batch([$event], [
+            'dry_run' => false,
+            'log'     => true,
+        ]);
+
+        $q = [
+            've_msg'   => 'import_done',
+            'imported' => $summary['imported'] ?? 0,
+            'updated'  => $summary['updated']  ?? 0,
+            'failed'   => $summary['failed']   ?? 0,
+        ];
+
+        wp_safe_redirect( add_query_arg($q, wp_get_referer() ?: admin_url('admin.php?page=veranstaltungs-export')) );
+        exit;
+    }
+
 }
 
 new SeevetalExporter();
