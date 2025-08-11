@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: Veranstaltungs Export mit Tag‑Matching
+ * Plugin Name: Veranstaltungs Export mit Tag‑Matching X
  * Description: Crawlt Events von Gemeinde Seevetal, matched Tags und zeigt alle Properties inkl. Bild.
  * Version: 2.0.1
  * Author: Matthias Clausen
@@ -12,8 +12,6 @@ if (!defined('ABSPATH')) {
 
 class SeevetalExporter {
     private $option_name = 've_search_terms';
-
-    require_once __DIR__ . '/includes/class-tec-importer.php';
 
     public function __construct() {
         add_action('admin_menu', [$this, 'add_admin_menu']);
@@ -175,7 +173,7 @@ class SeevetalExporter {
         }
 
         // Parser laden
-        // require_once __DIR__ . '/crawler/SeevetalParser.php';
+        require_once __DIR__ . '/crawler/SeevetalParser.php';
         $parser = new SeevetalParser();
 
         // <- WICHTIG: benutze hier die richtige Methode/Signatur aus deinem Parser!

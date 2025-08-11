@@ -1,0 +1,136 @@
+diff --git a/admin/menu.php b/admin/menu.php
+index 1a2b3c4..7d9e0ab 100644
+--- a/admin/menu.php
++++ b/admin/menu.php
+@@ -57,16 +57,33 @@ function ve_build_listing_url(string $term) : string {
+     return $base . '?' . http_build_query($args, '', '&', PHP_QUERY_RFC3986);
+ }
+ 
+-/** HTML holen (WP HTTP API) */
++/** HTML holen (WP HTTP API) – mit Browser-Headern */
+ function ve_fetch_html(string $url) : string {
+-    $res = wp_remote_get($url, ['timeout' => 20, 'redirection' => 5]);
++    $res = wp_remote_get($url, [
++        'timeout'     => 20,
++        'redirection' => 5,
++        'headers'     => [
++            'User-Agent'      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123 Safari/537.36',
++            'Accept'          => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
++            'Accept-Language' => 'de-DE,de;q=0.9,en;q=0.8',
++            'Cache-Control'   => 'no-cache',
++        ],
++    ]);
+     if (is_wp_error($res)) return '';
+     $code = wp_remote_retrieve_response_code($res);
+     if ($code !== 200) return '';
+     return (string) wp_remote_retrieve_body($res);
+ }
+ 
+-/** Aus der Listen-Seite alle Detail-Links extrahieren */
++/**
++ * Aus der Listen-Seite alle Detail-Links extrahieren
++ * robust: Double/Single-Quotes, data-url, generisches XPath, auch in Skript-Blöcken
++ */
+ function ve_extract_detail_links_from_listing_html(string $html) : array {
+-    $links = [];
++    $links = [];
++    if ($html === '') return $links;
++
++    // HTML-Entities dekodieren, damit Quotes im Regex sauber matchen
++    $raw = html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+ 
+     // 1) Regex auf typische Detail-URL-Pfade (sehr robust)
+-    if (preg_match_all('#href="([^"]+/regional/veranstaltungen/[^"]+?-\d{6,}-\d{5}\.html)"#i', $html, $m)) {
++    if (preg_match_all('#href=["\'](/regional/veranstaltungen/[^"\']+?-\d{6,}-\d{5}\.html)["\']#i', $raw, $m)) {
+         foreach ($m[1] as $href) $links[] = ve_abs_url($href);
+     }
+-    if (preg_match_all('#href="/regional/veranstaltungen/[^"]+?-\d{6,}-\d{5}\.html"#i', $html, $m2)) {
+-        foreach ($m2[0] as $attr) {
+-            // href="..."; extrahieren
+-            if (preg_match('#href="([^"]+)"#i', $attr, $one)) $links[] = ve_abs_url($one[1]);
+-        }
+-    }
++    // generischer Regex (zur Sicherheit)
++    if (preg_match_all('#/regional/veranstaltungen/[^"\']+?-\d{6,}-\d{5}\.html#i', $raw, $m2)) {
++        foreach ($m2[0] as $u) $links[] = ve_abs_url($u);
++    }
+ 
+     // 2) DOM/XPath Fallback auf Anker oder data-url
+-    if (empty($links)) {
+-        $dom = new DOMDocument();
+-        libxml_use_internal_errors(true);
+-        @$dom->loadHTML($html);
+-        libxml_clear_errors();
+-        $xp = new DOMXPath($dom);
+-        $nodes = $xp->query("//a[contains(translate(normalize-space(string(.)),'WEITERLESEN','weiterlesen'),'weiterlesen')]/@href");
+-        if ($nodes && $nodes->length) {
+-            foreach ($nodes as $n) $links[] = ve_abs_url($n->nodeValue);
+-        }
+-    }
++    $dom = new DOMDocument();
++    libxml_use_internal_errors(true);
++    @$dom->loadHTML($raw);
++    libxml_clear_errors();
++    $xp = new DOMXPath($dom);
++    // a[href*="/regional/veranstaltungen/"][href*=".html"]
++    $nodes = $xp->query("//a[contains(@href,'/regional/veranstaltungen/') and contains(@href,'.html')]/@href");
++    if ($nodes && $nodes->length) {
++        foreach ($nodes as $n) $links[] = ve_abs_url($n->nodeValue);
++    }
++    // [data-url]
++    $nodes2 = $xp->query("//*[@data-url]");
++    if ($nodes2 && $nodes2->length) {
++        foreach ($nodes2 as $n) {
++            $v = $n->getAttribute('data-url');
++            if ($v && stripos($v, '/regional/veranstaltungen/') !== false) {
++                $links[] = ve_abs_url($v);
++            }
++        }
++    }
+ 
+     // Bereinigen / eindeutige
+     $links = array_values(array_unique($links));
+@@ -77,6 +94,8 @@ function ve_extract_detail_links_from_listing_html(string $html) : array {
+     }, $links);
+ 
+     return $links;
+ }
+@@ -124,12 +143,17 @@ if ($action === 'search' && isset($_POST['_wpnonce']) && wp_verify_nonce($_POST[
+     } else {
+         $result_map = [];
+         foreach ($terms as $t) {
+             $list_url = ve_build_listing_url($t);
+-            $html     = ve_fetch_html($list_url);
+-            $links    = $html ? ve_extract_detail_links_from_listing_html($html) : [];
++            $html     = ve_fetch_html($list_url);
++            $links    = ve_extract_detail_links_from_listing_html($html);
+             $result_map[$t] = [
+                 'listing_url' => $list_url,
+                 'links'       => $links,
+                 'count'       => count($links),
++                // Mini-Debug: Antwortgröße (hilft, ob die Seite überhaupt geliefert wurde)
++                'debug'       => [
++                    'bytes' => strlen($html),
++                    // ggf. später erweitern (z. B. Status/Headers)
++                ],
+             ];
+         }
+         ve_set_last_links($result_map, $TRANSIENT_KEY);
+         $notice = 'Suche abgeschlossen.';
+@@ -190,6 +214,13 @@ if (!empty($map)) :
+             <h3 style="margin-top:20px;">
+                 Suchwort: <code><?php echo esc_html($term); ?></code>
+                 <span class="description"> – <?php echo intval($info['count']); ?> Treffer</span>
+             </h3>
++            <?php if (!empty($info['debug']['bytes'])): ?>
++                <p class="description" style="margin-top:-8px">
++                    Antwortgröße: <strong><?php echo intval($info['debug']['bytes']); ?></strong> Bytes
++                    <?php if (intval($info['debug']['bytes']) === 0): ?>
++                        – Hinweis: Leere Antwort. Prüfe Server-HTTP-Requests/Firewall/allow_url_fopen.
++                    <?php endif; ?>
++                </p>
++            <?php endif; ?>
+             <p>
+                 Listen-Seite: <a href="<?php echo esc_url($info['listing_url']); ?>" target="_blank" rel="noopener">
+                     <?php echo esc_html($info['listing_url']); ?></a>
+             </p>
