@@ -1,0 +1,190 @@
+*** a/crawler/SeevetalParser.php
+--- b/crawler/SeevetalParser.php
+***************
+*** 1,5 ****
+  <?php
+  if (!defined('ABSPATH')) exit;
+  
+  class SeevetalParser {
+  
+      // ---- Admin: Debug-Collector (zeigt URL, Bytes, Links) ----
+--- 1,5 ----
+  <?php
+  if (!defined('ABSPATH')) exit;
+  
+  class SeevetalParser {
++     private $last_debug = [];
+  
+      // ---- Admin: Debug-Collector (zeigt URL, Bytes, Links) ----
+***************
+*** 22,28 ****
+          $url  = $base . '?' . http_build_query([
+              'schnellauswahl' => 0,
+              'suchwort'       => $term,
+              'beginn_datum'   => '',
+              'ende_datum'     => '',
+              'ort'            => 0,
+          ]);
+          $html = $this->http_get($url);
+          $links = $this->extract_detail_links($html);
+  
+          return [
+              'url'   => $url,
+--- 22,43 ----
+          $url  = $base . '?' . http_build_query([
+              'schnellauswahl' => 0,
+              'suchwort'       => $term,
+              'beginn_datum'   => '',
+              'ende_datum'     => '',
+              'ort'            => 0,
+          ]);
+-         $html = $this->http_get($url);
++         $html = $this->http_get($url, 'https://www.seevetal.de/regional/veranstaltungen/sucheplus2.html');
+          $links = $this->extract_detail_links($html);
++ 
++         // Fallback: Portal-Suche, falls die spezielle Seite nichts liefert
++         if (empty($links)) {
++             $fallback = 'https://www.seevetal.de/portal/suche.html?suchbegriff=' . rawurlencode($term);
++             $html2 = $this->http_get($fallback, 'https://www.seevetal.de/portal/suche.html');
++             $links2 = $this->extract_detail_links($html2);
++             if (!empty($links2)) {
++                 $links = $links2;
++                 $url   = $fallback;
++                 $html  = $html2;
++             }
++         }
+  
+          return [
+              'url'   => $url,
+***************
+*** 45,64 ****
+      private function extract_detail_links(string $html): array {
+          $results = [];
+          if (empty($html)) return $results;
+  
+          libxml_use_internal_errors(true);
+          $dom = new \DOMDocument();
+          @$dom->loadHTML(mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'));
+          $xp = new \DOMXPath($dom);
+  
+          // Strategie A: direkte Detail-Links
+!         $nodes = $xp->query("//a[contains(@href,'/regional/veranstaltungen/')][contains(@href,'-20200')]");
+          foreach ($nodes as $a) {
+              $href = $a->getAttribute('href');
+              if ($href) $results[] = $this->absolute_url($href);
+          }
+  
+          // Strategie B: sichtbarer „weiterlesen“-Text
+          if (empty($results)) {
+              $nodes = $xp->query("//a[contains(translate(normalize-space(string(.)),'ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ','abcdefghijklmnopqrstuvwxyzäöü'),'weiterlesen')]/@href");
+              foreach ($nodes as $attr) {
+                  $href = $attr->value;
+                  if ($href) $results[] = $this->absolute_url($href);
+              }
+          }
+  
+          // Strategie C: Regex-Fallback (falls DOM/XPath an Markup scheitert)
+          if (empty($results)) {
+!             if (preg_match_all('#/regional/veranstaltungen/[A-Za-z0-9\-\._%]+-20200\.html#u', $html, $m)) {
+                  foreach ($m[0] as $p) {
+                      $results[] = $this->absolute_url($p);
+                  }
+              }
+          }
+  
+          return array_values(array_unique($results));
+      }
+--- 60,93 ----
+      private function extract_detail_links(string $html): array {
+          $results = [];
+          if (empty($html)) return $results;
+  
+          libxml_use_internal_errors(true);
+          $dom = new \DOMDocument();
+          @$dom->loadHTML(mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'));
+          $xp = new \DOMXPath($dom);
+  
+          // Strategie A: direkte Detail-Links
+!         $nodes = $xp->query("//a[contains(@href,'/regional/veranstaltungen/') and contains(@href,'.html')]/@href");
+!         foreach ($nodes as $attr) {
+!             $href = $attr->value;
+!             if ($href) $results[] = $this->absolute_url($href);
+!         }
+  
+          // Strategie B: sichtbarer „weiterlesen“-Text
+          if (empty($results)) {
+              $nodes = $xp->query("//a[contains(translate(normalize-space(string(.)),'ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ','abcdefghijklmnopqrstuvwxyzäöü'),'weiterlesen')]/@href");
+              foreach ($nodes as $attr) {
+                  $href = $attr->value;
+                  if ($href) $results[] = $this->absolute_url($href);
+              }
+          }
+  
+          // Strategie C: Regex-Fallback (falls DOM/XPath an Markup scheitert)
+          if (empty($results)) {
+!             // sowohl "detail-....html" als auch "titel-....-20200.html"
+!             if (preg_match_all('#/regional/veranstaltungen/[^\s"\']+?\.html#u', $html, $m)) {
+                  foreach ($m[0] as $p) {
+                      $results[] = $this->absolute_url($p);
+                  }
+              }
+          }
++ 
++         // Nur echte Veranstaltungs-Detailseiten behalten (Heuristik)
++         $results = array_values(array_filter(array_unique($results), function($u) {
++             return (bool)preg_match('#/regional/veranstaltungen/.+\.html$#i', $u);
++         }));
+  
+          return array_values(array_unique($results));
+      }
+***************
+*** 186,203 ****
+      }
+  
+      // ---- HTTP, Utils ----
+!     private function http_get($url) {
+!         $resp = wp_remote_get($url, [
+!             'timeout' => 20,
+!             'headers' => [
+!                 'User-Agent'      => 'VE/2.0 (+wordpress; seevetal crawler)',
+!                 'Accept-Language' => 'de-DE,de;q=0.9,en;q=0.8',
+!             ],
+!         ]);
+!         if (is_wp_error($resp)) return '';
+!         $code = wp_remote_retrieve_response_code($resp);
+!         if ($code !== 200) return '';
+!         return wp_remote_retrieve_body($resp);
+      }
+--- 215,246 ----
+      }
+  
+      // ---- HTTP, Utils ----
+!     private function http_get($url, $referer = '') {
+!         $args = [
+!             'timeout'     => 20,
+!             'redirection' => 10,
+!             'headers'     => [
+!                 'User-Agent'      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36',
+!                 'Accept'          => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+!                 'Accept-Language' => 'de-DE,de;q=0.9,en;q=0.8',
+!                 'Cache-Control'   => 'no-cache',
+!             ],
+!         ];
+!         if ($referer) {
+!             $args['headers']['Referer'] = $referer;
+!         }
+! 
+!         $resp = wp_remote_get($url, $args);
+!         if (is_wp_error($resp)) {
+!             error_log('VE http_get WP_Error: ' . $resp->get_error_message());
+!             return '';
+!         }
+!         $code = wp_remote_retrieve_response_code($resp);
+!         $body = (string)wp_remote_retrieve_body($resp);
+! 
+!         // mini-debug fürs Log
+!         error_log(sprintf('VE http_get %s => %d (%d bytes)', $url, $code, strlen($body)));
+! 
+!         if ($code !== 200) return '';
+!         return $body;
+      }
