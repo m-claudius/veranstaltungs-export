@@ -155,6 +155,91 @@ class SeevetalExporter {
         }
         return $found;
     }
+
+
+// Beispiel-Importer für ein Array von Events (aus Parsern)
+function ve_import_events_from_array(array $events, string $source_slug = ''): int {
+    $count = 0;
+    foreach ($events as $ev) {
+        $postarr = [
+            'post_type'    => 'tribe_events',
+            'post_status'  => 'publish',
+            'post_title'   => wp_strip_all_tags($ev['title'] ?? ''),
+            'post_content' => wp_kses_post($ev['description_html'] ?? ''),
+        ];
+
+        $post_id = wp_insert_post($postarr, true);
+        if (is_wp_error($post_id) || !$post_id) {
+            continue;
+        }
+
+        // Datum/Zeit (The Events Calendar Metas)
+        if (!empty($ev['start'])) {
+            update_post_meta($post_id, '_EventStartDate', $ev['start']);
+            update_post_meta($post_id, '_EventTimezone', $ev['timezone'] ?? 'Europe/Berlin');
+        }
+        if (!empty($ev['end'])) {
+            update_post_meta($post_id, '_EventEndDate', $ev['end']);
+        }
+
+        // Bild
+        if (!empty($ev['image'])) {
+            // einfaches Fetch + als Anhang setzen
+            $attach_id = ve_side_load_image_to_post($ev['image'], $post_id);
+            if ($attach_id) set_post_thumbnail($post_id, $attach_id);
+        }
+
+        // Ort als freies Feld in den Content / oder eigenes Mapping
+        if (!empty($ev['location_name'])) {
+            update_post_meta($post_id, '_EventVenueName', sanitize_text_field($ev['location_name']));
+        }
+
+        // Tags
+        if (!empty($ev['tags']) && is_array($ev['tags'])) {
+            wp_set_post_terms($post_id, array_map('sanitize_text_field', $ev['tags']), 'post_tag', true);
+        }
+
+        // Quelle
+        if (!empty($ev['source_url'])) {
+            update_post_meta($post_id, '_ve_source_url', esc_url_raw($ev['source_url']));
+        }
+        if (!empty($source_slug)) {
+            update_post_meta($post_id, '_ve_source_slug', sanitize_text_field($source_slug));
+        }
+        if (!empty($ev['fingerprint'])) {
+            update_post_meta($post_id, '_ve_fingerprint', sanitize_text_field($ev['fingerprint']));
+        }
+
+        $count++;
+    }
+    return $count;
+}
+
+    /**
+     * Hilfsfunktion: Remote-Bild anhängen
+     */
+    function ve_side_load_image_to_post(string $url, int $post_id): int {
+        if (!function_exists('media_sideload_image')) {
+            require_once ABSPATH . 'wp-admin/includes/media.php';
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/image.php';
+        }
+        $tmp = download_url($url);
+        if (is_wp_error($tmp)) return 0;
+
+        $file_array = [
+            'name'     => basename(parse_url($url, PHP_URL_PATH)),
+            'tmp_name' => $tmp,
+        ];
+
+        $att_id = media_handle_sideload($file_array, $post_id);
+        if (is_wp_error($att_id)) {
+            @unlink($tmp);
+            return 0;
+        }
+        return (int)$att_id;
+    }
+
 }
 
 new SeevetalExporter();

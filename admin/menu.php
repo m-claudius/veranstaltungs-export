@@ -7,6 +7,21 @@ function ve_register_admin_menu() {
         've_sources',
         've_render_admin_page'
     );
+    // Neuer Unterpunkt oder Hauptpunkt – je nach Struktur:
+    add_menu_page(
+        'Musik in alten Heidekirchen',
+        'MiAH Parser',
+        'manage_options',
+        'mih-parser',
+        function () {
+            require_once plugin_dir_path(__FILE__) . 'MusikInAltenHeidekirchenParser.php';
+            // Die Datei registriert sich selbst und rendert die Seite.
+            mih_render_admin_page();
+        },
+        'dashicons-album',
+        61
+    );
+
 }
 add_action('admin_menu', 've_register_admin_menu');
 
