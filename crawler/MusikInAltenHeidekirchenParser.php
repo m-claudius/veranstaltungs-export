@@ -1,265 +1,205 @@
 <?php
 /**
  * Parser für "Musik in alten Heidekirchen"
- * Liest die Terminliste und einzelne Terminseiten.
+ * Robust: class-guard, DOM-Parsing mit Fallbacks, korrekte Titel (h2), Datumserkennung, Bild & Ort.
  */
 
-if (!defined('ABSPATH')) {
-    exit;
-}
+if (!defined('ABSPATH')) { exit; }
+
+if (!class_exists('MusikInAltenHeidekirchenParser')) {
 
 class MusikInAltenHeidekirchenParser
 {
-    const BASE_URL = 'https://musik-in-alten-heidekirchen.wir-e.de';
-    const LIST_URL = 'https://musik-in-alten-heidekirchen.wir-e.de/termine';
+    /** Basis-URL der Seite */
+    public const BASE_URL  = 'https://musik-in-alten-heidekirchen.wir-e.de';
+    /** Standard-Listen-URL (Termine-Übersicht) */
+    public const LIST_URL  = 'https://musik-in-alten-heidekirchen.wir-e.de/termine';
+    /** Max. Anzahl standardmäßig */
+    public const DEFAULT_MAX = 10;
 
     /**
-     * Hole Event-Detail-Links von der Listen-Seite.
+     * Crawl der Listen-Seite und Parsen der Detailseiten.
      * @param string $list_url
-     * @return string[] absolute URLs
+     * @param int    $max
+     * @return array
      */
-    public function get_event_links($list_url = self::LIST_URL): array
+    public function crawl($list_url = self::LIST_URL, $max = self::DEFAULT_MAX)
     {
-        $html = $this->fetch($list_url);
-        if (!$html) {
-            return [];
-        }
+        $list_html = $this->http_get($list_url);
+        if ($list_html === '') { return []; }
 
-        // Links der Form /termine/<uuid> einsammeln
-        $links = [];
-        if (preg_match_all('#href="([^"]*/termine/[a-f0-9-]{36}[^"]*)"#i', $html, $m)) {
-            foreach (array_unique($m[1]) as $u) {
-                $links[] = $this->absolutize($u);
-            }
-        }
+        $links = $this->extract_detail_links($list_html);
+        if (empty($links)) { return []; }
 
-        // Fallback: nach "mehr" Links schauen
-        if (empty($links) && preg_match_all('#<a[^>]+href="([^"]+)"[^>]*>\s*(mehr|weiter|details)\s*</a>#i', $html, $mm)) {
-            foreach (array_unique($mm[1]) as $u) {
-                if (strpos($u, '/termine/') !== false) {
-                    $links[] = $this->absolutize($u);
-                }
-            }
-        }
-
-        return $links;
-    }
-
-    /**
-     * Parse eine Event-Detailseite.
-     * @param string $url
-     * @return array|null Normierte Event-Daten
-     */
-    public function parse_event(string $url): ?array
-    {
-        $html = $this->fetch($url);
-        if (!$html) {
-            return null;
-        }
-
-        libxml_use_internal_errors(true);
-        $dom = new DOMDocument();
-        // Workaround für Umlaute in loadHTML
-        @$dom->loadHTML('<?xml encoding="utf-8" ?>' . $html);
-        $xp = new DOMXPath($dom);
-
-        // 1) JSON-LD (falls vorhanden) bevorzugen
-        $json = $this->extract_json_ld_event($xp);
-
-        // 2) Fallback-Selektoren lt. bereitgestelltem HTML-Ausschnitt
-        $title = $this->text($xp, "//h1 | //h2");
-        if (!$title && $json && !empty($json['name'])) {
-            $title = trim($json['name']);
-        }
-
-        $dateText = $this->text($xp, "//h4[contains(@class,'date')]");
-        [$start, $end] = $this->parseDateRange($dateText, $json);
-
-        // Beschreibung
-        $descriptionHtml = $this->innerHTML($xp, "(//*[@class='content-elements']//div[contains(@class,'text-element-body')])[1]");
-        if (!$descriptionHtml && $json && !empty($json['description'])) {
-            $descriptionHtml = wp_kses_post(is_array($json['description']) ? implode("\n", $json['description']) : $json['description']);
-        }
-
-        // Ort
-        $location = $this->text($xp, "//*[contains(@class,'event')]//*[contains(@class,'location')]//text() | //*[contains(@class,'address')]//text()");
-        if (!$location && $json && !empty($json['location'])) {
-            if (is_array($json['location'])) {
-                if (!empty($json['location']['name'])) {
-                    $location = $json['location']['name'];
-                } elseif (!empty($json['location'][0]['name'])) {
-                    $location = $json['location'][0]['name'];
-                }
-            } elseif (is_string($json['location'])) {
-                $location = $json['location'];
-            }
-        }
-        $location = trim(preg_replace('/\s+/', ' ', (string)$location));
-
-        // Bild
-        $image = $this->attr($xp, "(//figure[contains(@class,'teaser-image')]//img)[1]", "src");
-        if (!$image) {
-            $style = $this->attr($xp, "(//figure[contains(@class,'teaser-image')]//*[contains(@style,'background')])[1]", "style");
-            if ($style && preg_match('#url\\(([^)]+)\\)#', $style, $mm)) {
-                $image = trim($mm[1], "'\" ");
-            }
-        }
-        if (!$image && $json && !empty($json['image'])) {
-            $image = is_array($json['image']) ? reset($json['image']) : $json['image'];
-        }
-        if ($image && strpos($image, 'http') !== 0) {
-            $image = $this->absolutize($image);
-        }
-
-        return [
-            'source'      => $url,
-            'post_title'  => $title ?: '',
-            'event_start' => $start ?: '',
-            'event_end'   => $end ?: '',
-            'location'    => $location ?: '',
-            'image'       => $image ?: '',
-            'description' => $descriptionHtml ?: '',
-        ];
-    }
-
-    /**
-     * Vorschau mehrerer Events
-     */
-    public function preview(int $limit = 20, string $list_url = self::LIST_URL): array
-    {
-        $links  = array_slice($this->get_event_links($list_url), 0, max(1, $limit));
         $events = [];
-        foreach ($links as $u) {
-            $ev = $this->parse_event($u);
-            if ($ev) {
+        $max = (int)$max > 0 ? (int)$max : self::DEFAULT_MAX;
+
+        foreach (array_slice($links, 0, $max) as $url) {
+            $detail_html = $this->http_get($url);
+            if ($detail_html === '') { continue; }
+            $ev = $this->parse_detail($detail_html, $url);
+            if (!empty($ev['title'])) {
                 $events[] = $ev;
             }
         }
         return $events;
     }
 
-    /* ====================== Helfer ====================== */
+    /* ------------------------------- intern -------------------------------- */
 
-    private function fetch(string $url): string
+    private function http_get($url)
     {
-        $res = wp_remote_get($url, [
+        $resp = wp_remote_get($url, [
             'timeout' => 20,
-            'headers' => ['Accept' => 'text/html,application/xhtml+xml']
+            'headers' => ['Accept' => 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8'],
         ]);
-        if (is_wp_error($res)) {
-            return '';
-        }
-        $code = (int) wp_remote_retrieve_response_code($res);
-        if ($code >= 400) {
-            return '';
-        }
-        return (string) wp_remote_retrieve_body($res);
+        if (is_wp_error($resp)) { return ''; }
+        $code = wp_remote_retrieve_response_code($resp);
+        if ($code < 200 || $code >= 300) { return ''; }
+        $body = wp_remote_retrieve_body($resp);
+        return is_string($body) ? $body : '';
     }
 
-    private function absolutize(string $url): string
+    /** @return array [DOMDocument, DOMXPath] */
+    private function new_dom($html)
     {
-        if (strpos($url, 'http') === 0) {
-            return $url;
-        }
-        return rtrim(self::BASE_URL, '/') . '/' . ltrim($url, '/');
+        $doc = new DOMDocument('1.0', 'UTF-8');
+        libxml_use_internal_errors(true);
+        $doc->loadHTML(
+            '<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>' . $html,
+            LIBXML_NOWARNING | LIBXML_NOERROR
+        );
+        libxml_clear_errors();
+        return [$doc, new DOMXPath($doc)];
     }
 
-    private function text(DOMXPath $xp, string $xpath): string
+    private function xtext(DOMXPath $xp, $query)
     {
-        $n = $xp->query($xpath)->item(0);
-        if (!$n) {
-            return '';
-        }
-        return trim(preg_replace('/\s+/', ' ', $n->textContent));
+        $n = $xp->query($query);
+        if (!$n || !$n->length) { return ''; }
+        $txt = $n->item(0)->textContent;
+        $txt = is_string($txt) ? $txt : '';
+        return trim(preg_replace('/\s+/u', ' ', $txt));
     }
 
-    private function attr(DOMXPath $xp, string $xpath, string $attr): string
+    private function extract_detail_links($html)
     {
-        $n = $xp->query($xpath)->item(0);
-        return $n ? trim($n->getAttribute($attr)) : '';
-    }
+        list($doc, $xp) = $this->new_dom($html);
+        $out = [];
 
-    private function innerHTML(DOMXPath $xp, string $xpath): string
-    {
-        $n = $xp->query($xpath)->item(0);
-        if (!$n) {
-            return '';
+        // bevorzugt „mehr“-Links
+        foreach ($xp->query("//a[contains(@href,'/termine/') and (contains(translate(normalize-space(.),'MEHR','mehr'),'mehr') or contains(@class,'more'))]") as $a) {
+            $href = $a->getAttribute('href');
+            if ($href) { $out[] = $this->abs($href); }
         }
-        $html = '';
-        foreach ($n->childNodes as $child) {
-            $html .= $n->ownerDocument->saveHTML($child);
-        }
-        return $html;
-    }
 
-    private function extract_json_ld_event(DOMXPath $xp): ?array
-    {
-        foreach ($xp->query("//script[@type='application/ld+json']") as $node) {
-            $data = json_decode($node->textContent, true);
-            if (!$data) {
-                continue;
-            }
-            // Direktes Event
-            if (!empty($data['@type']) && (stripos($data['@type'], 'Event') !== false || $data['@type'] === 'Event')) {
-                return $data;
-            }
-            // Graph
-            if (!empty($data['@graph']) && is_array($data['@graph'])) {
-                foreach ($data['@graph'] as $g) {
-                    if (!empty($g['@type']) && (stripos($g['@type'], 'Event') !== false || $g['@type'] === 'Event')) {
-                        return $g;
-                    }
+        // Fallback: alle plausiblen Detail-Links (ohne reine Listen-URL)
+        if (empty($out)) {
+            foreach ($xp->query("//a[contains(@href,'/termine/')][@href != '/termine']") as $a) {
+                $href = $a->getAttribute('href');
+                if ($href && !preg_match('~/termine/?$~', $href)) {
+                    $out[] = $this->abs($href);
                 }
             }
         }
-        return null;
+
+        return array_values(array_unique($out));
     }
 
-    private function parseDateRange(string $dateText, ?array $json): array
+    private function parse_detail($html, $source_url)
     {
-        $start = '';
-        $end   = '';
+        list($doc, $xp) = $this->new_dom($html);
 
-        if ($json) {
-            if (!empty($json['startDate'])) {
-                $start = $this->normalizeDate($json['startDate']);
-            }
-            if (!empty($json['endDate'])) {
-                $end = $this->normalizeDate($json['endDate']);
-            }
+        // *** Titel aus <h2> (so wie auf den Detailseiten) – Backup: <title> ***
+        $title = '';
+        foreach ([
+            "//main//article//h2[normalize-space()][1]",
+            "//*[contains(@class,'event') or contains(@class,'content')]//h2[normalize-space()][1]",
+            "//h2[normalize-space()][1]"
+        ] as $q) {
+            $title = $this->xtext($xp, $q);
+            if ($title !== '') { break; }
+        }
+        if ($title === '') { $title = $this->xtext($xp, "//title"); }
+
+        // Datum/Zeit – meist in <h4 class="date">…</h4>
+        $date_text = $this->xtext($xp, "//h4[contains(@class,'date')][1]");
+        list($start, $end) = $this->parse_datetime($date_text);
+
+        // Ort
+        $place = $this->xtext($xp, "//*[contains(@class,'place') or contains(@class,'ort')][1]");
+        if ($place === '') {
+            // Label-Variante „Ort:“ → nächstes Element/Text
+            $place = $this->xtext($xp, "//*[contains(translate(normalize-space(), 'ORT:', 'ort:'), 'ort:')]/following-sibling::*[1]");
         }
 
-        if (!$start && $dateText) {
-            // Beispiele: "17.08.2025 / 17:00" oder "17.08.2025"
-            if (preg_match('#(\d{1,2})\.(\d{1,2})\.(\d{4}).*?(\d{1,2}:\d{2})#', $dateText, $m)) {
-                $d = sprintf('%04d-%02d-%02d', (int)$m[3], (int)$m[2], (int)$m[1]);
-                $start = $d . ' ' . $m[4] . ':00';
-            } elseif (preg_match('#(\d{1,2})\.(\d{1,2})\.(\d{4})#', $dateText, $m)) {
-                $start = sprintf('%04d-%02d-%02d 00:00:00', (int)$m[3], (int)$m[2], (int)$m[1]);
-            }
+        // Beschreibung (kurz)
+        $desc = $this->xtext($xp, "//*[contains(@class,'event-content') or contains(@class,'content')]");
+
+        // Bild
+        $img = '';
+        $imgNode = $xp->query("(//main//article//img | //figure//img | //img[contains(@class,'event')])[1]");
+        if ($imgNode && $imgNode->length) {
+            $img = $imgNode->item(0)->getAttribute('src');
+            $img = $this->abs($img);
         }
 
+        return [
+            'title'       => $title,
+            'start'       => $start,
+            'end'         => $end,
+            'location'    => $place,
+            'description' => $desc,
+            'image'       => $img,
+            'source'      => $source_url,
+        ];
+    }
+
+    private function parse_datetime($raw)
+    {
+        $raw = trim((string)$raw);
+        if ($raw === '') { return ['', '']; }
+
+        // Normieren
+        $raw = str_replace(['Uhr', '–', '—', '|'], ['', '-', '-', '-'], $raw);
+        $raw = preg_replace('/\s+/u', ' ', $raw);
+
+        $date = '';
+        if (preg_match('/(\d{2}\.\d{2}\.\d{4})/u', $raw, $m)) {
+            $date = $m[1];
+        }
+
+        $times = [];
+        if (preg_match_all('/\b(\d{1,2}:\d{2})\b/u', $raw, $mm)) {
+            $times = $mm[1];
+        }
+
+        $start = $end = '';
+        if ($date !== '') {
+            if (isset($times[0])) {
+                $dt = DateTime::createFromFormat('d.m.Y H:i', $date.' '.$times[0]);
+                $start = $dt ? $dt->format('Y-m-d H:i:s') : '';
+            } else {
+                $dt = DateTime::createFromFormat('d.m.Y', $date);
+                $start = $dt ? $dt->format('Y-m-d 00:00:00') : '';
+            }
+            if (isset($times[1])) {
+                $et = DateTime::createFromFormat('d.m.Y H:i', $date.' '.$times[1]);
+                $end = $et ? $et->format('Y-m-d H:i:s') : '';
+            }
+        }
         return [$start, $end];
     }
 
-    private function normalizeDate(string $s): string
+    private function abs($url)
     {
-        $s = trim($s);
-        // ISO
-        if (preg_match('#^\d{4}-\d{2}-\d{2}#', $s)) {
-            $s = str_replace('T', ' ', $s);
-            if (strlen($s) === 10) {
-                $s .= ' 00:00:00';
-            } elseif (strlen($s) === 16) {
-                $s .= ':00';
-            }
-            return $s;
-        }
-        // DE
-        if (preg_match('#(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}:\d{2}))?#', $s, $m)) {
-            $d = sprintf('%04d-%02d-%02d', (int)$m[3], (int)$m[2], (int)$m[1]);
-            return $d . ' ' . (!empty($m[4]) ? $m[4] . ':00' : '00:00:00');
-        }
-        return $s;
+        $url = (string)$url;
+        if ($url === '') { return ''; }
+        if (strpos($url, '//') === 0) { return 'https:' . $url; }
+        if (preg_match('~^https?://~i', $url)) { return $url; }
+        if (strpos($url, '/') === 0) { return rtrim(self::BASE_URL, '/') . $url; }
+        return rtrim(self::BASE_URL, '/') . '/' . ltrim($url, '/');
     }
 }
+
+} // class_exists

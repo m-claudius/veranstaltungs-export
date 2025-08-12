@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: Veranstaltungs Export mit Tag‑Matching
+ * Plugin Name: Veranstaltungs Export mit Tag‑Matching 
  * Description: Crawlt Events von Gemeinde Seevetal, matched Tags und zeigt alle Properties inkl. Bild.
  * Version: 2.0.2
  * Author: Matthias Clausen
@@ -229,11 +229,12 @@ function ve_import_events_from_array(array $events, string $source_slug = ''): i
      * Hilfsfunktion: Remote-Bild anhängen
      */
     function ve_side_load_image_to_post(string $url, int $post_id): int {
-        if (!function_exists('media_sideload_image')) {
+/*        if (!function_exists('media_sideload_image')) {
             require_once ABSPATH . 'wp-admin/includes/media.php';
             require_once ABSPATH . 'wp-admin/includes/file.php';
             require_once ABSPATH . 'wp-admin/includes/image.php';
         }
+*/            
         $tmp = download_url($url);
         if (is_wp_error($tmp)) return 0;
 
