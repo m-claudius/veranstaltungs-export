@@ -2,20 +2,30 @@
 /**
  * Plugin Name: Veranstaltungs Export mit Tag‑Matching
  * Description: Crawlt Events von Gemeinde Seevetal, matched Tags und zeigt alle Properties inkl. Bild.
- * Version: 1.6.3
- * Author: ChatGPT
+ * Version: 2.0.2
+ * Author: Matthias Clausen
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
+// Pfad zum Plugin-Verzeichnis (falls noch nicht vorhanden)
+if ( ! defined('KSE_PLUGIN_DIR') ) {
+    define('KSE_PLUGIN_DIR', plugin_dir_path(__FILE__));
+}
+
+// Includes
+require_once KSE_PLUGIN_DIR . 'crawler/MusikInAltenHeidekirchenParser.php';
+require_once KSE_PLUGIN_DIR . 'admin/menu.php';
 
 class SeevetalExporter {
     private $option_name = 've_search_terms';
 
+
     public function __construct() {
         add_action('admin_menu', [$this, 'add_admin_menu']);
         add_action('admin_post_ve_save_terms', [$this, 'save_terms']);
+
     }
 
     public function add_admin_menu() {
