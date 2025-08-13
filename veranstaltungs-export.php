@@ -6,30 +6,47 @@
  * Author: Matthias Clausen
  */
 
-if (!defined('ABSPATH')) {
-    exit;
+if (!defined('ABSPATH')) exit;
+if (!defined('KSE_PLUGIN_DIR')) {
+    define('KSE_PLUGIN_DIR', plugin_dir_path(__FILE__));
 }
+require_once KSE_PLUGIN_DIR . 'crawler/MusikInAltenHeidekirchenParser.php';
+if (file_exists(KSE_PLUGIN_DIR . 'crawler/SeevetalParser.php')) {
+    require_once KSE_PLUGIN_DIR . 'crawler/SeevetalParser.php';
+}
+require_once KSE_PLUGIN_DIR . 'admin/menu.php'; // baut Top-Level „Event Import“
+
 
 class SeevetalExporter {
     private $option_name = 've_search_terms';
 
-    public function __construct() {
-        add_action('admin_menu', [$this, 'add_admin_menu']);
-        add_action('admin_post_ve_save_terms', [$this, 'save_terms']);
+public function __construct() {
+    add_action('admin_menu', [$this, 'add_admin_menu'], 99); // statt Standard
+    add_action('admin_post_ve_save_terms', [$this, 'save_terms']);
+}
+
+public function add_admin_menu() {
+    error_log('SeevetalExporter::add_admin_menu() gestartet');
+
+    // Falls unser Top-Level nicht geladen wäre, brechen wir sauber ab.
+    if (!function_exists('kse_render_event_import_dashboard')) {
+        // Fallback: nichts registrieren, damit kein zweites Top-Level entsteht
+        error_log('Event Import (Top-Level) nicht gefunden – lasse Submenü aus.');
+        return;
     }
 
-    public function add_admin_menu() {
-        error_log('SeevetalExporter::add_admin_menu() gestartet');
-        add_menu_page(
-            'Veranstaltungsquellen',       // Page title
-            'Event Export',                 // Menu title
-            'read',                         // Capability (temporär auf read gesetzt)
-            've-export',                    // Menu slug (hyphen statt underscore)
-            [$this, 'render_admin_page'],   // Callback
-            'dashicons-calendar-alt'        // Icon
-            // Keine Position: WP wählt automatisch
-        );
-    }
+    // >>> KEIN add_menu_page() mehr hier! <<<
+    // Stattdessen hängt sich die bestehende Admin-Seite als Unterpunkt an:
+    add_submenu_page(
+        'kse_event_import',            // parent slug aus admin/menu.php
+        'Seevetal Gemeinde',           // Page title
+        'Seevetal Gemeinde',           // Menu title
+        'manage_options',              // Capability (konsistent)
+        'kse_seevetal',                // slug (neu, statt ve-export)
+        [$this, 'render_admin_page']   // deine bisherige Callback-Methode
+    );
+}
+
 
     public function save_terms() {
         if (!current_user_can('manage_options')) wp_die('Unauthorized');
