@@ -1,0 +1,78 @@
+### mein Kommentar ###
+### URL: https://musik-in-alten-heidekirchen.wir-e.de/termine/ff3595af-fa73-4824-b730-fd04326e6e3f ###
+### nicht <title> verwenden ###
+### Beispiel: ###
+<title>
+Musik in alten Heidekirchen - OPEN AIR - La Fiesta Musica Mitreißendes Bläserfeuerwerk von emBRASSment aus Leipzig
+</title>
+### parsen beginnt hinter turbo-frame ###
+</turbo-frame>
+</div>
+<div class='col main-column'>
+<div class='card event-occurrence'>
+<div class='card-body'>
+<h2>
+### Titel ###
+OPEN AIR - La Fiesta Musica Mitreißendes Bläserfeuerwerk von emBRASSment aus Leipzig
+</h2>
+<h4 class='date'>
+### date / time ###
+17.08.2025 / 17:00
+</h4>
+<div class='event'>
+<div class='event-content clearfix'>
+<figure class='teaser-image clearfix'>
+<div class='image-container'>
+### Image  nach dem string "src=" suchen  ###
+<img sizes="(max-width: 576px) 64px, 196px" class="responsive-teaser-image" loading="lazy" srcset="https://cdn.wir-e.de/rails/active_storage/representations/proxy/eyJfcmFpbHMiOnsiZGF0YSI6IjYwOTY0NGE4LTBkYzQtNDRiYS04YTRlLThjNTgzYzI4YzY2YiIsInB1ciI6ImJsb2JfaWQifX0=--f0b3a932e75c36288bfe9cfb58694df45b7e1b80/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGVnIiwiY3JvcCI6Wzk3MywwLDM5MzIsMzkyOF0sInJlc2l6ZV90b19maXQiOlsxOTYsbnVsbF19LCJwdXIiOiJ2YXJpYXRpb24ifX0=--1709056c440a41a2e7cfc5ab213f0347cd31eeaa/Pressebild%20emBRASSement.jpeg 196w" src="https://cdn.wir-e.de/rails/active_storage/representations/proxy/eyJfcmFpbHMiOnsiZGF0YSI6IjYwOTY0NGE4LTBkYzQtNDRiYS04YTRlLThjNTgzYzI4YzY2YiIsInB1ciI6ImJsb2JfaWQifX0=--f0b3a932e75c36288bfe9cfb58694df45b7e1b80/eyJfcmFpbHMiOnsiZGF0YSI6eyJmb3JtYXQiOiJqcGVnIiwiY3JvcCI6Wzk3MywwLDM5MzIsMzkyOF0sInJlc2l6ZV90b19maXQiOlsyNTQsbnVsbF19LCJwdXIiOiJ2YXJpYXRpb24ifX0=--8adb89bc7f21214ae6fde37ea729e3316292c206/Pressebild%20emBRASSement.jpeg" />
+<div class='source'>© emBRASSement</div>
+</div>
+</figure>
+
+
+### Beschreibung - html Elemente entfernen! ###
+<div>Werke von Bizet, Crespo, Carli, Hernández u.a.&nbsp;</div>
+<div>&nbsp;</div>
+<div>Ensemble: Bläserquintett em<strong>BRASS</strong>ment, Leipzig:</div>
+<div>Christian Scholz, Nick Pscheidt – Trompete, Jakob Knauer – Horn, Lars - Proxa - Posaune</div>
+<div>Nikolai Kähler - Tuba<br><br>Gartenkonzert bei Familie von Petersdorff&nbsp;<br><br>Fünf virtuose Blechbläser aus Leipzig bringen die Natur im Garten auf dem Botenberg zum Erstrahlen: In einem schillernden Streifzug nimmt das Ensemble emBRASSment sein Publikum mit auf eine Reise durch Lateinamerika. Werke von Musiktitanen wie George Bizet und Enrique Crespo begegnen und verweben sich hier mit lateinamerikanischen Tänzen von Louis M. Gottschalk und Tangos von Jose Carli. Das Ensemble, dessen 25jähriges Bestehen in diesem Jahr ansteht, führt mit umrahmenden und heiteren Moderationen durch diese spannende und faszinierende Reise und entführt das Publikum tief in die musikalische und kulturelle Welt des lateinamerikanischen Tanzes.</div>
+
+
+</div>
+<div class='event-details'>
+<div class='row row-cols-1 row-cols-xl-2 g-3'>
+<div class='col-xl-5'>
+<div class='card h-100 m-0'>
+<div class='card-body'>
+### Ort ###
+<h4>Veranstaltungsort</h4>
+<div class='address'>
+<p>
+<strong>
+Garten der Familie v. Petersdorff
+</strong>
+</p>
+<p>
+Botenberg 2<br>21272 Egestorf
+### Ende von Ort ###
+</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class='content-elements my-default'>
+<div class='content-element text-element margin-small'>
+<div class='text-element-body'>
+### Eintrittspreise: Abendkasse:  ###
+<div>Parkplätze gibt am Botenberg<br>Eintrittspreise: Abendkasse 15 €,&nbsp;<br>&nbsp;Jugendliche (bis 18) 10€,&nbsp;<br>&nbsp;2€ Ermäßigung mit der NDR-Kulturkarte&nbsp;</div>
+
+</div>
+
+</div>
+
+</div>
+</div>
+<div class='social-bar'>
