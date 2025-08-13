@@ -6,17 +6,14 @@
  * Author: Matthias Clausen
  */
 
-if (!defined('ABSPATH')) {
-    exit;
-}
-// Pfad zum Plugin-Verzeichnis (falls noch nicht vorhanden)
-if ( ! defined('KSE_PLUGIN_DIR') ) {
-    define('KSE_PLUGIN_DIR', plugin_dir_path(__FILE__));
-}
+    if (!defined('ABSPATH')) exit;
+    if (!defined('KSE_PLUGIN_DIR')) {
+        define('KSE_PLUGIN_DIR', plugin_dir_path(__FILE__));
+    }
 
-// Includes
-require_once KSE_PLUGIN_DIR . 'crawler/MusikInAltenHeidekirchenParser.php';
-require_once KSE_PLUGIN_DIR . 'admin/menu.php';
+    require_once KSE_PLUGIN_DIR . 'crawler/MusikInAltenHeidekirchenParser.php';
+    require_once KSE_PLUGIN_DIR . 'admin/menu.php';
+
 
 class SeevetalExporter {
     private $option_name = 've_search_terms';
