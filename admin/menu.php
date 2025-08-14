@@ -40,7 +40,8 @@ add_action('admin_menu', function () {
         }
     );
 
-    // Seevetal (Platzhalter, bis deine UI vorhanden ist)
+// Seevetal: Nur Platzhalter registrieren, WENN die Klasse keine eigene Admin-Seite einhängt
+if ( ! class_exists('SeevetalExporter') || ! method_exists('SeevetalExporter', 'render_admin_page') ) {
     add_submenu_page(
         'kse_event_import',
         'Seevetal Gemeinde',
@@ -49,6 +50,8 @@ add_action('admin_menu', function () {
         'kse_seevetal',
         'kse_render_seevetal_placeholder'
     );
+}
+
 
     // DRY RUN
     add_submenu_page(
@@ -59,6 +62,16 @@ add_action('admin_menu', function () {
         'kse_dry_run',
         'kse_render_dry_run'
     );
+
+        add_submenu_page(
+        'kse_event_import',
+        'Import (LIVE) → The Events Calendar',
+        'Import (LIVE) → The Events Calendar',
+        'manage_options',
+        'kse_import_live',
+        'kse_render_import_live'
+    );
+
 
     // Einstellungen (minimal)
     add_submenu_page(
@@ -278,6 +291,238 @@ function kse_render_dry_run()
     </div>
     <?php
 }
+
+function kse_render_import_live() {
+    // Letzten Dry-Run laden
+    $report = get_option('kse_last_dry_run');
+    if (empty($report['items'])) {
+        echo '<div class="wrap"><h1>Import (LIVE)</h1><div class="notice notice-warning"><p>Kein Dry-Run gefunden. Bitte zuerst „Dry Run → The Events Calendar“ ausführen und speichern.</p></div></div>';
+        return;
+    }
+
+    $do_import = isset($_POST['kse_do_import_live']);
+    $log = [];
+    $ok = $err = 0;
+
+    if ($do_import) {
+        foreach ($report['items'] as $row) {
+            if (!in_array($row['status'], ['NEU','UPDATE'], true)) {
+                continue; // SKIP/FEHLER nicht importieren
+            }
+            $res = kse_import_event_to_tec($row);
+            if (is_wp_error($res)) {
+                $log[] = 'FEHLER: '.$row['title'].' → '.$res->get_error_message();
+                $err++;
+            } else {
+                $log[] = 'OK: '.$row['title'].' → Event #'.$res;
+                $ok++;
+            }
+        }
+        echo '<div class="notice notice-success"><p>Import abgeschlossen: '.$ok.' OK, '.$err.' Fehler.</p></div>';
+    }
+
+    ?>
+    <div class="wrap">
+        <h1>Import (LIVE) → The Events Calendar</h1>
+        <p>Es werden nur Einträge mit Status <strong>NEU</strong> und <strong>UPDATE</strong> importiert.</p>
+        <form method="post">
+            <p class="submit">
+                <button type="submit" name="kse_do_import_live" class="button button-primary">
+                    Import starten
+                </button>
+            </p>
+        </form>
+
+        <?php if (!empty($log)): ?>
+            <h2>Protokoll</h2>
+            <pre style="max-height:320px;overflow:auto;background:#fff;border:1px solid #ddd;padding:10px;"><?php echo esc_html(implode("\n", $log)); ?></pre>
+        <?php endif; ?>
+
+        <h2>Vorschau (aus letztem Dry-Run)</h2>
+        <table class="widefat striped">
+            <thead><tr>
+                <th>Quelle</th><th>Titel</th><th>Start</th><th>Ort</th><th>Status</th><th>Link</th>
+            </tr></thead>
+            <tbody>
+            <?php foreach ($report['items'] as $r): if (!in_array($r['status'], ['NEU','UPDATE','SKIP','FEHLER'], true)) continue; ?>
+                <tr>
+                    <td><?php echo esc_html($r['source']); ?></td>
+                    <td><?php echo esc_html($r['title']); ?></td>
+                    <td><?php echo esc_html($r['start']); ?></td>
+                    <td><?php echo esc_html($r['venue']); ?></td>
+                    <td><strong><?php echo esc_html($r['status']); ?></strong></td>
+                    <td><a href="<?php echo esc_url($r['source_url']); ?>" target="_blank" rel="noopener">öffnen</a></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php
+}
+
+/** Event in TEC anlegen/aktualisieren; gibt event_id oder WP_Error zurück */
+function kse_import_event_to_tec(array $row) {
+    $title = trim((string)($row['title'] ?? ''));
+    $start = trim((string)($row['start'] ?? ''));
+    if ($title === '' || $start === '') {
+        return new WP_Error('kse_missing', 'Titel oder Start fehlt');
+    }
+
+    // Existiert ein passendes TEC-Event? (Titel+Start)
+    $existing = kse_find_tec_by_title_and_start($title, $start);
+    $post_id  = $existing ? (int)$existing->ID : 0;
+
+    // Basisdaten
+    $content = (string)($row['description'] ?? '');
+    $status  = 'publish';
+    $tz      = wp_timezone_string() ?: 'Europe/Berlin';
+    $end     = !empty($row['end']) ? (string)$row['end'] : $start; // Fallback: gleich Start
+
+    // 1) Anlegen/Aktualisieren des Events
+    if (function_exists('tribe_create_event') && $post_id === 0) {
+        // TEC Helper verwenden (Neuanlage)
+        $args = [
+            'post_title'     => $title,
+            'post_content'   => $content,
+            'post_status'    => $status,
+            // TEC erwartet diese Keys (werden intern in die _Event* Metas geschrieben)
+            'EventStartDate' => $start,
+            'EventEndDate'   => $end,
+            'EventTimezone'  => $tz,
+        ];
+        $post_id = tribe_create_event($args);
+        if (is_wp_error($post_id) || !$post_id) {
+            return new WP_Error('kse_create_failed', 'tribe_create_event fehlgeschlagen');
+        }
+    } else {
+        // Fallback / Update
+        if ($post_id === 0) {
+            $post_id = wp_insert_post([
+                'post_type'   => 'tribe_events',
+                'post_title'  => $title,
+                'post_content'=> $content,
+                'post_status' => $status,
+            ], true);
+            if (is_wp_error($post_id) || !$post_id) {
+                return new WP_Error('kse_insert_failed', 'wp_insert_post fehlgeschlagen');
+            }
+        } else {
+            // Update bestehender Beitrag
+            wp_update_post([
+                'ID'           => $post_id,
+                'post_title'   => $title,
+                'post_content' => $content,
+                'post_status'  => $status,
+            ]);
+        }
+
+        // Metadaten gem. TEC speichern
+        update_post_meta($post_id, '_EventStartDate', $start);
+        update_post_meta($post_id, '_EventEndDate',   $end);
+        update_post_meta($post_id, '_EventTimezone',  $tz);
+    }
+
+    // 2) Venue (Ort) anlegen/zuweisen (einfacher Upsert nach Titel)
+    if (!empty($row['venue'])) {
+        $venue_id = kse_upsert_tribe_venue($row['venue'], $row['venue_address'] ?? '', $row['venue_city'] ?? '');
+        if ($venue_id) {
+            update_post_meta($post_id, '_EventVenueID', (int)$venue_id);
+        }
+    }
+
+    // 3) Bild laden & setzen
+    if (!empty($row['image'])) {
+        $att_id = kse_sideload_image($row['image'], $post_id);
+        if ($att_id && !is_wp_error($att_id)) {
+            set_post_thumbnail($post_id, $att_id);
+        }
+    }
+
+    // 4) Quelle / Index pflegen
+    if (!empty($row['source_url'])) {
+        update_post_meta($post_id, '_kse_source_url', esc_url_raw($row['source_url']));
+    }
+    if (!empty($row['external_id'])) {
+        $index = get_option('kse_import_index', []);
+        $index[$row['external_id']] = (int)$post_id;
+        update_option('kse_import_index', $index, false);
+    }
+
+    return (int)$post_id;
+}
+
+/** Venue anlegen/finden */
+function kse_upsert_tribe_venue(string $name, string $street = '', string $city = ''): int {
+    $name = trim($name);
+    if ($name === '') return 0;
+
+    $q = new WP_Query([
+        'post_type'      => 'tribe_venue',
+        'post_status'    => 'any',
+        'posts_per_page' => 1,
+        'title'          => $name,
+        'no_found_rows'  => true,
+    ]);
+    if ($q->have_posts()) {
+        return (int)$q->posts[0]->ID;
+    }
+
+    $id = wp_insert_post([
+        'post_type'   => 'tribe_venue',
+        'post_title'  => $name,
+        'post_status' => 'publish',
+    ], true);
+    if (is_wp_error($id) || !$id) return 0;
+
+    if ($street) update_post_meta($id, '_VenueAddress', $street);
+    if ($city)   update_post_meta($id, '_VenueCity',    $city);
+    return (int)$id;
+}
+
+/** Bild von URL in Mediathek mit Duplikatprüfung (_kse_source_url am Attachment) */
+function kse_sideload_image(string $url, int $attach_to_post = 0) {
+    $url = esc_url_raw($url);
+    if ($url === '') return 0;
+
+    // Bereits vorhanden?
+    $q = new WP_Query([
+        'post_type'      => 'attachment',
+        'posts_per_page' => 1,
+        'no_found_rows'  => true,
+        'meta_query'     => [[
+            'key'   => '_kse_source_url',
+            'value' => $url,
+        ]],
+    ]);
+    if ($q->have_posts()) {
+        return (int)$q->posts[0]->ID;
+    }
+
+    // Download
+    require_once ABSPATH . 'wp-admin/includes/file.php';
+    require_once ABSPATH . 'wp-admin/includes/media.php';
+    require_once ABSPATH . 'wp-admin/includes/image.php';
+
+    $tmp = download_url($url);
+    if (is_wp_error($tmp)) return $tmp;
+
+    $file = [
+        'name'     => wp_basename(parse_url($url, PHP_URL_PATH)),
+        'type'     => mime_content_type($tmp),
+        'tmp_name' => $tmp,
+        'size'     => filesize($tmp),
+        'error'    => 0,
+    ];
+
+    $id = media_handle_sideload($file, $attach_to_post);
+    if (is_wp_error($id)) {
+        @unlink($tmp);
+        return $id;
+    }
+    update_post_meta($id, '_kse_source_url', $url);
+    return (int)$id;
+}
+
 
 /* ================== Einstellungen ==================== */
 function kse_render_settings() { ?>
