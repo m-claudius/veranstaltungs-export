@@ -11,10 +11,8 @@ if (!defined('KSE_PLUGIN_DIR')) {
     define('KSE_PLUGIN_DIR', plugin_dir_path(__FILE__));
 }
 require_once KSE_PLUGIN_DIR . 'crawler/MusikInAltenHeidekirchenParser.php';
-if (file_exists(KSE_PLUGIN_DIR . 'crawler/SeevetalParser.php')) {
-    require_once KSE_PLUGIN_DIR . 'crawler/SeevetalParser.php';
-}
-require_once KSE_PLUGIN_DIR . 'admin/menu.php'; // baut Top-Level „Event Import“
+require_once KSE_PLUGIN_DIR . 'crawler/SeevetalParser.php';
+require_once KSE_PLUGIN_DIR . 'admin/menu.php';
 
 
 class SeevetalExporter {
@@ -28,24 +26,46 @@ public function __construct() {
 public function add_admin_menu() {
     error_log('SeevetalExporter::add_admin_menu() gestartet');
 
-    // Falls unser Top-Level nicht geladen wäre, brechen wir sauber ab.
-    if (!function_exists('kse_render_event_import_dashboard')) {
-        // Fallback: nichts registrieren, damit kein zweites Top-Level entsteht
-        error_log('Event Import (Top-Level) nicht gefunden – lasse Submenü aus.');
-        return;
-    }
+    // Top-Level „Event Import”
+    add_menu_page(
+        'Event Import',
+        'Event Import',
+        'manage_options',
+        'kse-import',
+        'kse_render_dashboard',
+        'dashicons-calendar-alt',
+        58
+    );
 
-    // >>> KEIN add_menu_page() mehr hier! <<<
-    // Stattdessen hängt sich die bestehende Admin-Seite als Unterpunkt an:
+    // Unterpunkte
     add_submenu_page(
-        'kse_event_import',            // parent slug aus admin/menu.php
-        'Seevetal Gemeinde',           // Page title
-        'Seevetal Gemeinde',           // Menu title
-        'manage_options',              // Capability (konsistent)
-        'kse_seevetal',                // slug (neu, statt ve-export)
-        [$this, 'render_admin_page']   // deine bisherige Callback-Methode
+        'kse-import',
+        'Musik in alten Heidekirchen',
+        'Musik in alten Heidekirchen',
+        'manage_options',
+        'kse-miah',
+        'kse_render_miah_admin'
+    );
+
+    add_submenu_page(
+        'kse-import',
+        'Seevetal Gemeinde',
+        'Seevetal Gemeinde',
+        'manage_options',
+        'kse-seevetal',
+        'kse_render_seevetal_admin'
+    );
+
+    add_submenu_page(
+        'kse-import',
+        'Einstellungen',
+        'Einstellungen',
+        'manage_options',
+        'kse-settings',
+        'kse_render_settings_admin'
     );
 }
+
 
 
     public function save_terms() {
