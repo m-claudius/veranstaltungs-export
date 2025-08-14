@@ -360,96 +360,151 @@ function kse_render_import_live() {
     <?php
 }
 
-/** Event in TEC anlegen/aktualisieren; gibt event_id oder WP_Error zurück */
 function kse_import_event_to_tec(array $row) {
     $title = trim((string)($row['title'] ?? ''));
-    $start = trim((string)($row['start'] ?? ''));
-    if ($title === '' || $start === '') {
-        return new WP_Error('kse_missing', 'Titel oder Start fehlt');
+    $start = (string)($row['start'] ?? '');
+    $end   = (string)($row['end'] ?? '');
+    $desc  = (string)($row['description'] ?? '');
+    $image = (string)($row['image'] ?? '');
+    $venue_name     = (string)($row['venue_name'] ?? ($row['venue'] ?? ''));
+    $venue_street   = (string)($row['venue_address'] ?? '');
+    $venue_postcode = (string)($row['venue_postcode'] ?? '');
+    $venue_city     = (string)($row['venue_city'] ?? '');
+    $source_url     = (string)($row['source_url'] ?? '');
+    $external_id    = (string)($row['external_id'] ?? '');
+
+    if ($title === '') {
+        return new WP_Error('kse_missing', 'Titel fehlt');
     }
 
-    // Existiert ein passendes TEC-Event? (Titel+Start)
-    $existing = kse_find_tec_by_title_and_start($title, $start);
-    $post_id  = $existing ? (int)$existing->ID : 0;
+    // Datum sicherstellen (MySQL)
+    if (!preg_match('~^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}$~', $start)) {
+        [$start, $end] = kse_normalize_german_datetime_range($start, $end);
+    }
+    if ($start === '') {
+        return new WP_Error('kse_missing', 'Startzeit unlesbar');
+    }
+    if ($end === '') $end = $start;
 
-    // Basisdaten
-    $content = (string)($row['description'] ?? '');
-    $status  = 'publish';
-    $tz      = wp_timezone_string() ?: 'Europe/Berlin';
-    $end     = !empty($row['end']) ? (string)$row['end'] : $start; // Fallback: gleich Start
+    // 0) Bestehendes Event suchen – erst external_id, dann (Titel+Start)
+    $post_id = 0;
+    if ($external_id !== '') {
+        $post_id = kse_find_tec_by_external_id($external_id) ?: 0;
+    }
+    if (!$post_id) {
+        $existing = kse_find_tec_by_title_and_start($title, $start);
+        if ($existing) $post_id = (int)$existing->ID;
+    }
 
-    // 1) Anlegen/Aktualisieren des Events
-    if (function_exists('tribe_create_event') && $post_id === 0) {
-        // TEC Helper verwenden (Neuanlage)
-        $args = [
-            'post_title'     => $title,
-            'post_content'   => $content,
-            'post_status'    => $status,
-            // TEC erwartet diese Keys (werden intern in die _Event* Metas geschrieben)
-            'EventStartDate' => $start,
-            'EventEndDate'   => $end,
-            'EventTimezone'  => $tz,
-        ];
-        $post_id = tribe_create_event($args);
-        if (is_wp_error($post_id) || !$post_id) {
-            return new WP_Error('kse_create_failed', 'tribe_create_event fehlgeschlagen');
-        }
+    // 1) Anlegen/Updaten
+    $tz = wp_timezone_string() ?: 'Europe/Berlin';
+    $args_base = [
+        'post_title'   => $title,
+        'post_content' => $desc,
+        'post_status'  => 'publish',
+    ];
+
+    if ($post_id) {
+        $u = wp_update_post(array_merge($args_base, ['ID' => $post_id]), true);
+        if (is_wp_error($u)) return $u;
     } else {
-        // Fallback / Update
-        if ($post_id === 0) {
-            $post_id = wp_insert_post([
-                'post_type'   => 'tribe_events',
-                'post_title'  => $title,
-                'post_content'=> $content,
-                'post_status' => $status,
-            ], true);
+        if (function_exists('tribe_create_event')) {
+            $post_id = tribe_create_event(array_merge($args_base, [
+                'EventStartDate' => $start,
+                'EventEndDate'   => $end,
+                'EventTimezone'  => $tz,
+            ]));
             if (is_wp_error($post_id) || !$post_id) {
-                return new WP_Error('kse_insert_failed', 'wp_insert_post fehlgeschlagen');
+                $post_id = wp_insert_post(array_merge($args_base, ['post_type' => 'tribe_events']), true);
             }
         } else {
-            // Update bestehender Beitrag
-            wp_update_post([
-                'ID'           => $post_id,
-                'post_title'   => $title,
-                'post_content' => $content,
-                'post_status'  => $status,
-            ]);
+            $post_id = wp_insert_post(array_merge($args_base, ['post_type' => 'tribe_events']), true);
         }
-
-        // Metadaten gem. TEC speichern
-        update_post_meta($post_id, '_EventStartDate', $start);
-        update_post_meta($post_id, '_EventEndDate',   $end);
-        update_post_meta($post_id, '_EventTimezone',  $tz);
-    }
-
-    // 2) Venue (Ort) anlegen/zuweisen (einfacher Upsert nach Titel)
-    if (!empty($row['venue'])) {
-        $venue_id = kse_upsert_tribe_venue($row['venue'], $row['venue_address'] ?? '', $row['venue_city'] ?? '');
-        if ($venue_id) {
-            update_post_meta($post_id, '_EventVenueID', (int)$venue_id);
+        if (is_wp_error($post_id) || !$post_id) {
+            return new WP_Error('kse_insert_failed', 'Event konnte nicht angelegt werden');
         }
     }
 
-    // 3) Bild laden & setzen
-    if (!empty($row['image'])) {
-        $att_id = kse_sideload_image($row['image'], $post_id);
-        if ($att_id && !is_wp_error($att_id)) {
-            set_post_thumbnail($post_id, $att_id);
-        }
+    // 2) CPT/Metas erzwingen (unabhängig vom Zweig)
+    if (get_post_type($post_id) !== 'tribe_events') {
+        global $wpdb; $wpdb->update($wpdb->posts, ['post_type' => 'tribe_events'], ['ID' => $post_id]); clean_post_cache($post_id);
+    }
+    update_post_meta($post_id, '_EventStartDate',    $start);
+    update_post_meta($post_id, '_EventEndDate',      $end);
+    $s_utc = get_gmt_from_date($start, 'Y-m-d H:i:s');
+    $e_utc = get_gmt_from_date($end,   'Y-m-d H:i:s');
+    update_post_meta($post_id, '_EventStartDateUTC', $s_utc);
+    update_post_meta($post_id, '_EventEndDateUTC',   $e_utc);
+    update_post_meta($post_id, '_EventTimezone',     $tz);
+    update_post_meta($post_id, '_EventDuration',     max(0, strtotime($e_utc) - strtotime($s_utc)));
+
+    // 3) Venue
+    if ($venue_name !== '') {
+        $venue_id = kse_upsert_tribe_venue($venue_name, $venue_street, $venue_city ? ($venue_postcode.' '.$venue_city) : '');
+        if ($venue_id) update_post_meta($post_id, '_EventVenueID', (int)$venue_id);
     }
 
-    // 4) Quelle / Index pflegen
-    if (!empty($row['source_url'])) {
-        update_post_meta($post_id, '_kse_source_url', esc_url_raw($row['source_url']));
+    // 4) Bild
+    if ($image !== '') {
+        $att_id = kse_sideload_image($image, $post_id);
+        if (!is_wp_error($att_id) && $att_id) set_post_thumbnail($post_id, $att_id);
     }
-    if (!empty($row['external_id'])) {
+
+    // 5) Quelle/Index
+    if ($source_url)   update_post_meta($post_id, '_kse_source_url', esc_url_raw($source_url));
+    if ($external_id) {
+        update_post_meta($post_id, '_kse_external_id', $external_id);
         $index = get_option('kse_import_index', []);
-        $index[$row['external_id']] = (int)$post_id;
+        $index[$external_id] = (int)$post_id;
         update_option('kse_import_index', $index, false);
     }
 
+    error_log(sprintf('KSE Import: #%d "%s" → %s (%s)', $post_id, $title, $start, $tz));
     return (int)$post_id;
 }
+
+/** TEC-Event via externer ID finden */
+function kse_find_tec_by_external_id(string $external_id): ?int {
+    if ($external_id === '') return null;
+    $q = new WP_Query([
+        'post_type'      => 'tribe_events',
+        'post_status'    => 'any',
+        'posts_per_page' => 1,
+        'no_found_rows'  => true,
+        'meta_query'     => [[
+            'key'   => '_kse_external_id',
+            'value' => $external_id,
+        ]],
+        'fields' => 'ids',
+    ]);
+    if ($q->have_posts()) {
+        return (int)$q->posts[0];
+    }
+    return null;
+}
+
+
+/** Wandelt WP-lokale Zeiten in TEC-kompatible Local+UTC um */
+function kse_to_tec_dates(string $start_local, string $end_local, string $tz): array {
+    try {
+        $tz_obj = new DateTimeZone($tz);
+    } catch (Exception $e) {
+        $tz_obj = new DateTimeZone('Europe/Berlin');
+    }
+    $s = DateTime::createFromFormat('Y-m-d H:i:s', $start_local, $tz_obj) ?: new DateTime($start_local, $tz_obj);
+    $e = DateTime::createFromFormat('Y-m-d H:i:s', $end_local,   $tz_obj) ?: new DateTime($end_local,   $tz_obj);
+
+    $s_utc = clone $s; $s_utc->setTimezone(new DateTimeZone('UTC'));
+    $e_utc = clone $e; $e_utc->setTimezone(new DateTimeZone('UTC'));
+
+    return [
+        'start_local' => $s->format('Y-m-d H:i:s'),
+        'end_local'   => $e->format('Y-m-d H:i:s'),
+        'start_utc'   => $s_utc->format('Y-m-d H:i:s'),
+        'end_utc'     => $e_utc->format('Y-m-d H:i:s'),
+    ];
+}
+
 
 /** Venue anlegen/finden */
 function kse_upsert_tribe_venue(string $name, string $street = '', string $city = ''): int {
@@ -534,41 +589,121 @@ function kse_render_settings() { ?>
 
 /* ================== Hilfsfunktionen ================== */
 
-/** Vereinheitlichtes Event-Array + externe ID aus Quelle extrahieren */
 function kse_map_event(array $ev, string $source): array
 {
-    $title = $ev['title']       ?? '';
-    $start = $ev['start']       ?? '';
-    $venue = $ev['venue']       ?? ($ev['ort'] ?? '');
-    $image = $ev['image']       ?? '';
-    $url   = $ev['url']         ?? ($ev['source'] ?? $ev['source_url'] ?? '');
+    // Rohwerte aus Parser
+    $title = (string)($ev['title'] ?? '');
+    $start = (string)($ev['start'] ?? ($ev['start_raw'] ?? ''));
+    $end   = (string)($ev['end']   ?? ($ev['end_raw'] ?? ''));
+    $desc  = (string)($ev['description'] ?? ($ev['desc'] ?? ''));
+    $image = (string)($ev['image'] ?? '');
+    $url   = (string)($ev['url']   ?? ($ev['source'] ?? $ev['source_url'] ?? ''));
+    $venue_raw = (string)($ev['venue'] ?? ($ev['ort'] ?? ''));
+    $venue_name = (string)($ev['venue_name'] ?? '');
+    $venue_street = (string)($ev['venue_street'] ?? '');
+    $venue_postcode = (string)($ev['venue_postcode'] ?? '');
+    $venue_city = (string)($ev['venue_city'] ?? '');
 
+    // Externe ID aus URL ableiten
     $external_id = '';
     if ($source === 'musikheide') {
-        // /termine/<uuid>
-        if (preg_match('~/termine/([0-9a-f-]{10,})~i', (string)$url, $m)) {
+        if (preg_match('~/termine/([0-9a-f-]{10,})~i', $url, $m)) {
             $external_id = 'musikheide:' . strtolower($m[1]);
         }
     } elseif ($source === 'seevetal') {
-        // ...-910027150-20200.html → 910027150-20200
-        if (preg_match('~-(\d{6,}-\d{5})\.html$~', (string)$url, $m)) {
+        if (preg_match('~-(\d{6,}-\d{5})\.html$~', $url, $m)) {
             $external_id = 'seevetal:' . $m[1];
         }
     }
     if ($external_id === '') {
-        $external_id = $source . ':' . md5((string)$url . '|' . $title . '|' . $start);
+        $external_id = $source . ':' . md5($url . '|' . $title);
+    }
+
+    // Datum normalisieren (de→MySQL), inkl. Bereich "… - …"
+    [$start_local, $end_local] = kse_normalize_german_datetime_range($start, $end);
+
+    // Adresse zerlegen, wenn Parser es noch nicht tat
+    if ($venue_name === '' && $venue_street === '' && ($venue_postcode === '' || $venue_city === '')) {
+        [$venue_name, $venue_street, $venue_postcode, $venue_city] = kse_parse_address_fields(
+            $venue_name !== '' ? ($venue_name . "\n" . $venue_raw) : $venue_raw
+        );
     }
 
     return [
-        'source'      => $source,
-        'external_id' => $external_id,
-        'title'       => (string)$title,
-        'start'       => (string)$start,
-        'venue'       => (string)$venue,
-        'image'       => (string)$image,
-        'source_url'  => (string)$url,
+        'source'         => $source,
+        'external_id'    => $external_id,
+        'title'          => $title,
+        'description'    => $desc,
+        'start'          => $start_local,     // Y-m-d H:i:s
+        'end'            => $end_local,       // Y-m-d H:i:s
+        'venue'          => $venue_name ?: $venue_raw,
+        'venue_name'     => $venue_name,
+        'venue_address'  => $venue_street,
+        'venue_postcode' => $venue_postcode,
+        'venue_city'     => $venue_city,
+        'image'          => $image,
+        'source_url'     => $url,
     ];
 }
+
+/** "Do., 04.09.2025, 17:30 Uhr" (oder Bereiche "… - …") → ['start','end'] in Y-m-d H:i:s */
+function kse_normalize_german_datetime_range(string $start_raw, string $end_raw = ''): array {
+    $to_mysql = function (string $s): string {
+        $s = trim($s);
+        // entferne Wochentag, "Uhr", Kommas
+        $s = preg_replace('~(?:Mo|Di|Mi|Do|Fr|Sa|So)\.,?\s*~u', '', $s);
+        $s = str_replace('Uhr', '', $s);
+        $s = trim(str_replace(',', '', $s));
+        // Variante "dd.mm.yyyy HH:MM"
+        if (preg_match('~(\d{2})\.(\d{2})\.(\d{4})\s+(\d{1,2}):(\d{2})~', $s, $m)) {
+            return sprintf('%04d-%02d-%02d %02d:%02d:00', $m[3], $m[2], $m[1], $m[4], $m[5]);
+        }
+        // Nur Datum
+        if (preg_match('~(\d{2})\.(\d{2})\.(\d{4})~', $s, $m)) {
+            return sprintf('%04d-%02d-%02d 00:00:00', $m[3], $m[2], $m[1]);
+        }
+        // Fallback: unverändert (verhindert "heute")
+        return $s;
+    };
+
+    // Fälle wie "Fr., 29.08.2025, 16:00 Uhr - So., 31.08.2025, 19:00 Uhr"
+    if (strpos($start_raw, ' - ') !== false && $end_raw === '') {
+        [$lhs, $rhs] = array_map('trim', explode(' - ', $start_raw, 2));
+        return [$to_mysql($lhs), $to_mysql($rhs)];
+    }
+    $start = $to_mysql($start_raw);
+    $end   = $end_raw !== '' ? $to_mysql($end_raw) : $start;
+    return [$start, $end];
+}
+
+/** Heuristische Adress-Zerlegung aus Freitext → [name, street, postcode, city] */
+function kse_parse_address_fields(string $txt): array {
+    $txt = trim(preg_replace('~\s+~', ' ', str_replace(["\r", "\n"], ' ', $txt)));
+
+    // PLZ + Ort
+    $postcode = ''; $city = '';
+    if (preg_match('~\b(\d{5})\s+([A-Za-zÄÖÜäöüß\-\.\' ]{2,})\b~u', $txt, $m)) {
+        $postcode = $m[1];
+        $city     = trim($m[2]);
+        // bis zur PLZ alles davor betrachten
+        $before = trim(substr($txt, 0, strpos($txt, $m[0])));
+    } else {
+        $before = $txt;
+    }
+
+    // Straße + Nr (letzter Teil vor PLZ/Ort)
+    $street = '';
+    if (preg_match('~([A-Za-zÄÖÜäöüß\-\.\' ]+)\s+(\d+[a-zA-Z\-]?)$~u', $before, $m2)) {
+        $street = trim($m2[0]);
+        $name   = trim(substr($before, 0, -strlen($m2[0])));
+    } else {
+        $name = $before;
+    }
+
+    $name = trim(trim($name), ',');
+    return [$name, trim($street), $postcode, $city];
+}
+
 
 /** Duplikat-Suche in The Events Calendar: Titel + _EventStartDate */
 function kse_find_tec_by_title_and_start(string $title, string $start): ?WP_Post
