@@ -1,5 +1,46 @@
 <?php
-if (!defined('ABSPATH')) { exit; }
+if (!defined('ABSPATH')) exit;
+
+add_action('admin_menu', function () {
+    add_menu_page(
+        'Event Import',
+        'Event Import',
+        'read',
+        'kse-event-import',
+        function () {
+            echo '<div class="wrap"><h1>Event Import</h1><p>Wähle links eine Quelle oder „Einstellungen“.</p></div>';
+        },
+        'dashicons-calendar-alt'
+    );
+
+    add_submenu_page(
+        'kse-event-import',
+        'Musik in alten Heidekirchen – Parser',
+        'Musik in alten Heidekirchen',
+        'read',
+        'kse-miah',
+        'kse_render_miah_admin'
+    );
+
+    add_submenu_page(
+        'kse-event-import',
+        'Gemeinde Seevetal – Parser',
+        'Gemeinde Seevetal',
+        'read',
+        'kse-seevetal',
+        'kse_render_seevetal_admin'
+    );
+
+    add_submenu_page(
+        'kse-event-import',
+        'Einstellungen',
+        'Einstellungen',
+        'manage_options',
+        'kse-settings',
+        'kse_render_settings_admin'
+    );
+});
+
 
 /* ==================== Top: Dashboard ==================== */
 function kse_render_dashboard() { ?>

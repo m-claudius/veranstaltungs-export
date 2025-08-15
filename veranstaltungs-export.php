@@ -14,6 +14,43 @@ require_once KSE_PLUGIN_DIR . 'crawler/MusikInAltenHeidekirchenParser.php';
 require_once KSE_PLUGIN_DIR . 'crawler/SeevetalParser.php';
 require_once KSE_PLUGIN_DIR . 'admin/menu.php';
 
+// ===== Seevetal CRON – aktivierbar per Konstante =====
+// In wp-config.php oder hier setzen: define('KSE_CRON_SEEVETAL', true);
+if (!defined('KSE_CRON_SEEVETAL')) {
+    define('KSE_CRON_SEEVETAL', false); // default: aus
+}
+
+// Beim Aktivieren Termin planen
+register_activation_hook(__FILE__, function () {
+    if (KSE_CRON_SEEVETAL && !wp_next_scheduled('kse_cron_seevetal')) {
+        wp_schedule_event(time() + 300, 'hourly', 'kse_cron_seevetal'); // stündlich
+    }
+});
+
+// Beim Deaktivieren Termin entfernen
+register_deactivation_hook(__FILE__, function () {
+    $ts = wp_next_scheduled('kse_cron_seevetal');
+    if ($ts) wp_unschedule_event($ts, 'kse_cron_seevetal');
+});
+
+// Job-Handler
+add_action('kse_cron_seevetal', function () {
+    if (!class_exists('SeevetalParser')) return;
+    if (!function_exists('kse_map_event') || !function_exists('kse_import_event_to_tec')) return;
+
+    $terms = get_option('kse_terms_seevetal', 'Musik,Kultur');
+    $data  = SeevetalParser::crawl($terms);
+
+    $imported = 0;
+    foreach ((array)($data['events'] ?? []) as $ev) {
+        $row = kse_map_event($ev, 'seevetal');
+        $res = kse_import_event_to_tec($row);
+        if (!is_wp_error($res)) $imported++;
+    }
+    error_log('KSE CRON (Seevetal): importiert='.$imported.' bei Begriffen: '.$terms);
+});
+
+
 
 class SeevetalExporter {
     private $option_name = 've_search_terms';
