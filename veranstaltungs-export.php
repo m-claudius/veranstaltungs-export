@@ -9,10 +9,16 @@
 if (!defined('KSE_PLUGIN_DIR')) {
     define('KSE_PLUGIN_DIR', plugin_dir_path(__FILE__));
 }
+if (!defined('KSE_PLUGIN_FILE')) define('KSE_PLUGIN_FILE', __FILE__);
+//register_activation_hook(KSE_PLUGIN_FILE, 'kse_stats_install');
+
 require_once KSE_PLUGIN_DIR . 'crawler/MusikInAltenHeidekirchenParser.php';
 require_once KSE_PLUGIN_DIR . 'crawler/SeevetalParser.php';
 require_once KSE_PLUGIN_DIR . 'admin/menu.php';
 require_once KSE_PLUGIN_DIR . 'admin/settings.php';
+require_once KSE_PLUGIN_DIR . 'includes/tec_import.php';
+require_once KSE_PLUGIN_DIR . 'includes/stats.php';
+require_once KSE_PLUGIN_DIR . 'includes/dedupe.php';
 
 class SeevetalExporter {
     private $option_name = 've_search_terms';
