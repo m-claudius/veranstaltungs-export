@@ -2,673 +2,263 @@
 if (!defined('ABSPATH')) exit;
 
 /**
- * Admin-Menü „Event Import“ + Unterseiten
- * - Musik in alten Heidekirchen – Parser
- * - Gemeinde Seevetal – Parser
- * - Einstellungen
- * - Statistik
+ * Menü „Event Import“ + Quell-spezifische Seiten
+ * Benötigt:
+ *  - KSE_PLUGIN_DIR Konstante in der Hauptdatei
+ *  - includes/tec_import.php (mit kse_tec_upsert_event und Schutzlogik)
+ *  - crawler/MusikInAltenHeidekirchenParser.php
+ *  - crawler/SeevetalParser.php
+ *  - crawler/EmporeBuchholzParser.php
  */
 
 add_action('admin_menu', function () {
-
+    // Hauptmenü
     add_menu_page(
         'Event Import',
         'Event Import',
-        'read',
-        'kse-event-import',
-        'kse_render_event_import_landing',
-        'dashicons-calendar-alt'
-    );
-
-    add_submenu_page(
-        'kse-event-import',
-        'Musik in alten Heidekirchen – Parser',
-        'Musik in alten Heidekirchen',
-        'read',
-        'kse-miah',
-        'kse_render_miah_admin'
-    );
-
-    add_submenu_page(
-        'kse-event-import',
-        'Gemeinde Seevetal – Parser',
-        'Gemeinde Seevetal',
-        'read',
-        'kse-seevetal',
-        'kse_render_seevetal_admin'
-    );
-
-    add_submenu_page(
-        'kse-event-import',
-        'Einstellungen',
-        'Einstellungen',
         'manage_options',
-        'kse-settings',
-        'kse_render_settings_admin' // in admin/settings.php
+        'kse-import',
+        'kse_render_dashboard',
+        'dashicons-calendar-alt',
+        60
     );
 
-    add_submenu_page(
-        'kse-event-import',
-        'Statistik',
-        'Statistik',
-        'manage_options',
-        'kse-stats',
-        'kse_render_stats_admin' // in includes/stats.php
-    );
+    // Quellen
+    add_submenu_page('kse-import', 'Musik in alten Heidekirchen', 'Musik in alten Heidekirchen', 'manage_options', 'kse-miah', 'kse_render_miah_admin');
+    add_submenu_page('kse-import', 'Gemeinde Seevetal', 'Gemeinde Seevetal', 'manage_options', 'kse-seevetal', 'kse_render_seevetal_admin');
+    add_submenu_page('kse-import', 'Empore Buchholz', 'Empore Buchholz', 'manage_options', 'kse-empore', 'kse_render_empore_admin');
 
-    add_submenu_page(
-        'kse-event-import',           // parent slug (bei dir ggf. anpassen)
-        'Dubletten',
-        'Dubletten',
-        'edit_posts',
-        'kse-dedupe',
-        'kse_render_dedupe_admin'
-        );
-
+    // Weitere Seiten (Stub, damit sichtbar)
+    add_submenu_page('kse-import', 'Einstellungen', 'Einstellungen', 'manage_options', 'kse-settings', 'kse_render_settings_stub');
+    add_submenu_page('kse-import', 'Statistik', 'Statistik', 'manage_options', 'kse-stats', 'kse_render_stats_stub');
 });
 
-/* ---------------- Landing ---------------- */
+// --- Includes robust einbinden ---
+if (defined('KSE_PLUGIN_DIR')) {
+    $inc = KSE_PLUGIN_DIR . 'includes/tec_import.php';
+    if (file_exists($inc)) require_once $inc;
 
-function kse_render_event_import_landing() {
-    echo '<div class="wrap"><h1>Event Import</h1>';
-    if (!empty($_GET['kse_msg'])) {
-        echo '<div class="notice notice-success"><p>'.esc_html(wp_unslash($_GET['kse_msg'])).'</p></div>';
-    }
-    echo '<p>Wähle links eine Quelle:</p>
-        <ul style="list-style:disc;margin-left:20px">
-          <li><a href="'.esc_url(admin_url('admin.php?page=kse-miah')).'">Musik in alten Heidekirchen</a></li>
-          <li><a href="'.esc_url(admin_url('admin.php?page=kse-seevetal')).'">Gemeinde Seevetal</a></li>
-          <li><a href="'.esc_url(admin_url('admin.php?page=kse-settings')).'">Einstellungen</a></li>
-          <li><a href="'.esc_url(admin_url('admin.php?page=kse-stats')).'">Statistik</a></li>
-        </ul>
-    </div>';
+    $p1 = KSE_PLUGIN_DIR . 'crawler/MusikInAltenHeidekirchenParser.php';
+    if (file_exists($p1)) require_once $p1;
+
+    $p2 = KSE_PLUGIN_DIR . 'crawler/SeevetalParser.php';
+    if (file_exists($p2)) require_once $p2;
+
+    $p3 = KSE_PLUGIN_DIR . 'crawler/EmporeBuchholzParser.php';
+    if (file_exists($p3)) require_once $p3;
 }
 
-function kse_render_dedupe_admin(){
-    echo '<div class="wrap"><h1>Dubletten zusammenführen</h1>';
-    $groups = kse_find_duplicates_groups(180);
-    if (!$groups) { echo '<p>Keine Dubletten gefunden.</p></div>'; return; }
-
-    echo '<p>Gruppierung: <code>normalisierter Titel + Startdatum</code>. Wähle eine Gruppe aus und klicke „Zu einem Eintrag zusammenführen“.</p>';
-
-    echo '<table class="widefat striped"><thead><tr><th>Gruppe</th><th>Events</th><th>Aktion</th></tr></thead><tbody>';
-    foreach ($groups as $key => $ids) {
-        $titles = array_map('get_the_title', $ids);
-        $links  = array_map(function($id){
-            return '<a href="'.esc_url(get_edit_post_link($id)).'">#'.$id.' „'.esc_html(get_the_title($id)).'“</a>';
-        }, $ids);
-        echo '<tr><td><code>'.esc_html($key).'</code></td><td>'.implode('<br>', $links).'</td><td>
-            <form method="post" action="'.esc_url(admin_url('admin-post.php')).'">
-              <input type="hidden" name="action" value="kse_merge_group">
-              '.wp_nonce_field('kse_merge_group','kse_nonce',true,false).'
-              <input type="hidden" name="ids" value="'.esc_attr(implode(',', $ids)).'">
-              <button class="button button-primary">Zu einem Eintrag zusammenführen</button>
-            </form>
-        </td></tr>';
-    }
-    echo '</tbody></table></div>';
+// ---------- Dashboard (kleine Info) ----------
+function kse_render_dashboard() {
+    echo '<div class="wrap"><h1>Event Import</h1><p>Wähle links eine Quelle aus, um Termine zu crawlen und zu importieren.</p></div>';
 }
 
-add_action('admin_post_kse_merge_group', function(){
-    if (!current_user_can('edit_posts')) wp_die('no perms');
-    check_admin_referer('kse_merge_group','kse_nonce');
-    $ids = array_filter(array_map('intval', explode(',', $_POST['ids'] ?? '')));
-    $res = kse_merge_event_group($ids);
-    $msg = $res['merged']
-        ? 'Zusammengeführt. Primär: #'.$res['primary'].'; Papierkorb: '.implode(',', $res['trashed'])
-        : 'Keine Zusammenführung durchgeführt.';
-    wp_redirect( add_query_arg(['page'=>'kse-dedupe','kse_notice'=>rawurlencode($msg)], admin_url('admin.php')) );
-    exit;
-});
+// ---------- Helfer: sichere GET/POST ----------
+function kse_post($key, $default = null) { return isset($_POST[$key]) ? wp_unslash($_POST[$key]) : $default; }
+function kse_get($key, $default = null) { return isset($_GET[$key]) ? wp_unslash($_GET[$key]) : $default; }
 
-
-/* -------------- Hilfen UI -------------- */
-
-function kse_trim_text($text, $len = 220) {
-    $t = trim(preg_replace('/\s+/u',' ', wp_strip_all_tags((string)$text)));
-    if (mb_strlen($t) <= $len) return esc_html($t);
-    return esc_html(mb_substr($t, 0, $len)).'…';
-}
-
-function kse_render_events_table_with_select(array $events, string $action, string $nonce_action, string $return_page) {
-    echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
-    echo '<input type="hidden" name="action" value="'.esc_attr($action).'" />';
-    wp_nonce_field($nonce_action);
-    echo '<input type="hidden" name="return_page" value="'.esc_attr($return_page).'" />';
-
-    echo '<p style="display:flex;gap:.5rem;align-items:center;">
-            <label><input type="checkbox" id="kse-select-all" /> Alle auswählen</label>
-            <button type="submit" name="do" value="dry" class="button">Dry-Run (prüfen)</button>
-            <button type="submit" name="do" value="live" class="button button-primary">Ausgewählte importieren</button>
-          </p>';
-
-    echo '<table class="widefat striped"><thead><tr>
-            <th style="width:26px"></th>
-            <th style="width:28%">Titel</th>
-            <th style="width:14%">Start</th>
-            <th style="width:20%">Ort</th>
-            <th style="width:12%">Bild</th>
-            <th>Beschreibung</th>
-          </tr></thead><tbody>';
+// ---------- Helfer: Event-Tabelle rendern ----------
+function kse_render_event_table(array $events, string $source_slug, string $submit_label = 'Ausgewählte importieren') {
+    $events = array_values(array_filter($events, 'is_array'));
+    echo '<form method="post">';
+    wp_nonce_field('kse_import_'.$source_slug, 'kse_nonce');
+    echo '<input type="hidden" name="kse_action" value="import_selected">';
+    echo '<table class="widefat striped"><thead><tr>';
+    echo '<th style="width:24px"><input type="checkbox" onclick="jQuery(\'.kse_rowchk\').prop(\'checked\', this.checked)"></th>';
+    echo '<th>Titel</th><th>Start</th><th>Ort</th><th>Quelle</th><th>Bild</th>';
+    echo '</tr></thead><tbody>';
 
     foreach ($events as $ev) {
-        $title = esc_html($ev['title'] ?? '');
-        $start = esc_html($ev['start'] ?? ($ev['datetime'] ?? ''));
-        $loc   = esc_html($ev['location'] ?? '');
+        $title = trim($ev['title'] ?? '');
+        $start = trim($ev['start'] ?? ($ev['datetime'] ?? ''));
+        $loc   = trim($ev['location'] ?? '');
         $src   = esc_url($ev['source_url'] ?? ($ev['source'] ?? ''));
-        if (!$src) continue;
+        $img   = esc_url($ev['image'] ?? '');
+        $key   = substr(md5(($src ?: $title.$start).maybe_serialize($ev)), 0, 12);
 
-        $img   = '';
-        if (!empty($ev['image'])) {
-            $img = '<img src="'.esc_url($ev['image']).'" alt="" style="max-width:120px;height:auto;border-radius:4px" />';
-        }
-        $desc = kse_trim_text($ev['description'] ?? ($ev['description_html'] ?? ($ev['desc'] ?? '')));
-
-        echo '<tr>
-            <td><input type="checkbox" name="selected[]" value="'.esc_attr($src).'" /></td>
-            <td>'.($src ? '<a href="'.$src.'" target="_blank" rel="noopener">'.$title.'</a>' : $title).'</td>
-            <td>'.$start.'</td>
-            <td>'.$loc.'</td>
-            <td>'.$img.'</td>
-            <td>'.$desc.'</td>
-        </tr>';
+        // Hidden Payload (Base64 JSON)
+        $packed = base64_encode(wp_json_encode($ev));
+        echo '<tr>';
+        echo '<td><input type="checkbox" class="kse_rowchk" name="selected[]" value="'.esc_attr($key).'"></td>';
+        echo '<td>'.esc_html($title ?: '(ohne Titel)').'</td>';
+        echo '<td>'.esc_html($start ?: '').'</td>';
+        echo '<td>'.esc_html($loc ?: '').'</td>';
+        echo '<td>'.($src ? '<a href="'.$src.'" target="_blank" rel="noopener">öffnen</a>' : '').'</td>';
+        echo '<td>'.($img ? '<img src="'.$img.'" style="max-width:80px;height:auto;border:1px solid #ccc" />' : '').'</td>';
+        echo '</tr>';
+        echo '<input type="hidden" name="event_json['.esc_attr($key).']" value="'.esc_attr($packed).'">';
     }
 
-    echo '</tbody></table></form>';
-
-    echo '<script>
-    (function(){
-      const all = document.getElementById("kse-select-all");
-      if(!all) return;
-      all.addEventListener("change", function(){
-        document.querySelectorAll(\'input[name="selected[]"]\').forEach(cb => cb.checked = all.checked);
-      });
-    })();
-    </script>';
+    echo '</tbody></table>';
+    echo '<p style="margin-top:12px"><label><input type="checkbox" name="dry_run" value="1"> Dry-Run (nur anzeigen, nichts schreiben)</label></p>';
+    echo '<p><button type="submit" class="button button-primary">'.$submit_label.'</button></p>';
+    echo '</form>';
 }
 
-/* -------------- Musik in alten Heidekirchen -------------- */
+// ---------- Gemeinsamer Import-Handler ----------
+function kse_handle_import_selected(string $source_slug, string $source_category) {
+    if (!current_user_can('manage_options')) return;
+    check_admin_referer('kse_import_'.$source_slug, 'kse_nonce');
 
+    $selected = (array) kse_post('selected', []);
+    $selected = array_values(array_unique(array_map('sanitize_text_field', $selected)));
+    $all_ev   = (array) kse_post('event_json', []);
+
+    $dry = !empty($_POST['dry_run']);
+    $done = 0;
+
+    if (!$selected) {
+        echo '<div class="notice notice-warning"><p>Keine Auswahl getroffen.</p></div>';
+        return;
+    }
+
+    if (!function_exists('kse_tec_upsert_event')) {
+        echo '<div class="notice notice-error"><p>Importer fehlt: includes/tec_import.php nicht geladen.</p></div>';
+        return;
+    }
+
+    echo '<ul style="list-style:disc;margin-left:20px">';
+    foreach ($selected as $key) {
+        if (empty($all_ev[$key])) continue;
+        $ev = json_decode(base64_decode($all_ev[$key]), true);
+        if (!is_array($ev)) continue;
+
+        $src = esc_url_raw($ev['source_url'] ?? ($ev['source'] ?? ''));
+        $desc = (string)($ev['description'] ?? '');
+        if ($src) {
+            // Vorgabe: am Ende eine Leerzeile + „Quelle: (C) <URL>“
+            $desc = rtrim($desc)."\n\nQuelle: (C) ".$src;
+        }
+        $payload = [
+            'title'       => (string)($ev['title'] ?? ''),
+            'description' => $desc,
+            'start'       => (string)($ev['start'] ?? ($ev['datetime'] ?? '')),
+            'location'    => (string)($ev['location'] ?? ''),
+            'image'       => (string)($ev['image'] ?? ''),
+            'source_url'  => $src,
+        ];
+
+        if ($dry) {
+            echo '<li><strong>'.esc_html($payload['title'] ?: '(ohne Titel)').'</strong> — Dry-Run → <a href="'.esc_url($src).'" target="_blank" rel="noopener">Quelle</a></li>';
+            continue;
+        }
+
+        $result = kse_tec_upsert_event($payload, [
+            'default_duration_minutes' => 120,
+            'source_slug'              => $source_slug,
+            'source_category'          => $source_category,
+        ]);
+
+        $tec_link = !empty($result['permalink']) ? $result['permalink'] : '';
+        $post_id  = !empty($result['post_id']) ? (int)$result['post_id'] : 0;
+        $action   = $result['action'] ?? '';
+        $label    = ($action === 'skipped_own' || $action === 'skipped_own_protected') ? 'Übersprungen (eigene)'
+                   : (str_starts_with($action, 'skipped_foreign') ? 'Übersprungen (andere Quelle)' : strtoupper($action));
+
+        printf(
+            '<li><strong>%s</strong> — <a href="%s" target="_blank" rel="noopener">Quelle</a> → %s <em>(%s)</em></li>',
+            esc_html($payload['title'] ?: '(ohne Titel)'),
+            esc_url($src),
+            ($post_id && $tec_link) ? '<a href="'.esc_url($tec_link).'" target="_blank" rel="noopener">TEC #'.$post_id.'</a>' : 'TEC (kein Link)',
+            esc_html($label)
+        );
+        $done++;
+    }
+    echo '</ul>';
+
+    if (!$dry) {
+        echo '<div class="notice notice-success"><p>Fertig. '.$done.' Einträge verarbeitet.</p></div>';
+    }
+}
+
+// ---------- Seite: Musik in alten Heidekirchen ----------
 function kse_render_miah_admin() {
     echo '<div class="wrap"><h1>Musik in alten Heidekirchen – Parser</h1>';
-
     if (!class_exists('MusikInAltenHeidekirchenParser')) {
-        echo '<div class="notice notice-error"><p>Der Parser ist nicht geladen. Bitte sicherstellen, dass <code>crawler/MusikInAltenHeidekirchenParser.php</code> in <code>veranstaltungs-export.php</code> eingebunden wird.</p></div></div>';
+        echo '<div class="notice notice-error"><p>Der Parser ist nicht geladen. Prüfe <code>crawler/MusikInAltenHeidekirchenParser.php</code>.</p></div></div>';
         return;
     }
 
-    if (!empty($_GET['kse_msg'])) {
-        echo '<div class="notice notice-success"><p>'.esc_html(wp_unslash($_GET['kse_msg'])).'</p></div>';
+    // POST: Import
+    if (!empty($_POST['kse_action']) && $_POST['kse_action']==='import_selected') {
+        kse_handle_import_selected('miah', 'Musik in alten Heidekirchen');
+        echo '</div>'; return;
     }
 
-    $parser  = new MusikInAltenHeidekirchenParser();
-    $listUrl = defined('MusikInAltenHeidekirchenParser::LIST_URL')
-        ? MusikInAltenHeidekirchenParser::LIST_URL
-        : 'https://musik-in-alten-heidekirchen.wir-e.de/termine';
-
-    $events = $parser->crawl($listUrl, 50);
-
-    echo '<p><strong>Listen-URL:</strong> <a href="'.esc_url($listUrl).'" target="_blank" rel="noopener">'.esc_html($listUrl).'</a><br>';
-    echo '<strong>Gefundene Events:</strong> '.count($events).'</p>';
-
-    echo '<p>
-        <form method="post" action="'.esc_url(admin_url('admin-post.php')).'" style="display:inline-block;margin-right:.5rem">
-            '.wp_nonce_field('kse_import_miah_all', '_wpnonce', true, false).'
-            <input type="hidden" name="action" value="kse_import_miah_all" />
-            <button class="button">Alles prüfen (Dry-Run)</button>
-        </form>
-        <form method="post" action="'.esc_url(admin_url('admin-post.php')).'" style="display:inline-block">
-            '.wp_nonce_field('kse_import_miah_all', '_wpnonce', true, false).'
-            <input type="hidden" name="action" value="kse_import_miah_all" />
-            <input type="hidden" name="do" value="live" />
-            <button class="button button-primary">Alles importieren</button>
-        </form>
-    </p>';
-
-    if (empty($events)) {
-        echo '<p>Keine Veranstaltungen gefunden.</p></div>';
+    // Crawl & zeigen
+    $parser = new MusikInAltenHeidekirchenParser();
+    $events = $parser->crawl(); // erwartet Array von Events
+    if (!is_array($events) || !$events) {
+        echo '<div class="notice notice-warning"><p>Keine Veranstaltungen gefunden.</p></div></div>';
         return;
     }
 
-    // Normieren
-    $events = array_map(function($e){
-        $e['source_url']  = $e['source_url'] ?? ($e['source'] ?? '');
-        $e['description'] = $e['description'] ?? ($e['description_html'] ?? ($e['desc'] ?? ''));
-        return $e;
-    }, $events);
-
-    kse_render_events_table_with_select($events, 'kse_import_miah', 'kse_import_miah', 'kse-miah');
+    kse_render_event_table($events, 'miah', 'Ausgewählte importieren');
     echo '</div>';
 }
 
-/* -------------- Gemeinde Seevetal -------------- */
-
+// ---------- Seite: Gemeinde Seevetal ----------
 function kse_render_seevetal_admin() {
     echo '<div class="wrap"><h1>Gemeinde Seevetal – Parser</h1>';
-
     if (!class_exists('SeevetalParser')) {
-        echo '<div class="notice notice-warning"><p>Parser <code>SeevetalParser</code> nicht gefunden. Stelle sicher, dass <code>crawler/SeevetalParser.php</code> eingebunden ist.</p></div></div>';
+        echo '<div class="notice notice-error"><p>Der Parser ist nicht geladen. Prüfe <code>crawler/SeevetalParser.php</code>.</p></div></div>';
         return;
     }
 
-    if (!empty($_GET['kse_msg'])) {
-        echo '<div class="notice notice-success"><p>'.esc_html(wp_unslash($_GET['kse_msg'])).'</p></div>';
+    // POST: Import
+    if (!empty($_POST['kse_action']) && $_POST['kse_action']==='import_selected') {
+        kse_handle_import_selected('seevetal', 'Gemeinde Seevetal');
+        echo '</div>'; return;
     }
 
-    $opts = get_option('kse_options', []);
-    $wl = array_values(array_filter(array_map('trim', explode(',', $opts['seevetal_whitelist'] ?? 'Musik,Kultur'))));
-    $bl = array_values(array_filter(array_map('trim', explode(',', $opts['seevetal_blacklist'] ?? ''))));
-
-    echo '<p><strong>Whitelist:</strong> '.esc_html(implode(', ', $wl)).'</p>';
-    if (!empty($bl)) echo '<p><strong>Blacklist:</strong> '.esc_html(implode(', ', $bl)).'</p>';
+    // Optional Suchbegriffe (Whitelist)
+    $terms = isset($_GET['terms']) ? sanitize_text_field($_GET['terms']) : '';
+    echo '<form method="get" style="margin:10px 0">';
+    echo '<input type="hidden" name="page" value="kse-seevetal">';
+    echo '<label>Suchworte (Komma-getrennt): <input type="text" name="terms" value="'.esc_attr($terms).'" style="min-width:320px"></label> ';
+    echo '<button class="button">Neu laden</button>';
+    echo '</form>';
 
     $parser = new SeevetalParser();
-
-    // Detail-Links sammeln
-    $links = [];
-    foreach ($wl as $term) {
-        if ($term === '') continue;
-        $links = array_merge($links, $parser->collect_detail_links($term));
-    }
-    $links = array_values(array_unique($links));
-    $blacklisted = 0;
-
-    // Blacklist anwenden
-    if ($bl) {
-        $links = array_values(array_filter($links, function ($u) use ($bl, &$blacklisted) {
-            foreach ($bl as $b) {
-                if ($b !== '' && stripos($u, $b) !== false) { $blacklisted++; return false; }
-            }
-            return true;
-        }));
-    }
-
-    echo '<p>
-        <form method="post" action="'.esc_url(admin_url('admin-post.php')).'" style="display:inline-block;margin-right:.5rem">
-            '.wp_nonce_field('kse_import_seevetal_all', '_wpnonce', true, false).'
-            <input type="hidden" name="action" value="kse_import_seevetal_all" />
-            <button class="button">Alles prüfen (Dry-Run)</button>
-        </form>
-        <form method="post" action="'.esc_url(admin_url('admin-post.php')).'" style="display:inline-block">
-            '.wp_nonce_field('kse_import_seevetal_all', '_wpnonce', true, false).'
-            <input type="hidden" name="action" value="kse_import_seevetal_all" />
-            <input type="hidden" name="do" value="live" />
-            <button class="button button-primary">Alles importieren</button>
-        </form>
-    </p>';
-
-    echo '<h2>Gefundene Detail-Links ('.count($links).')</h2>';
-    if (!$links) {
-        echo '<p>Keine Links gefunden.</p></div>';
+    $events = $parser->crawl(['terms'=>$terms]); // deine Implementierung nutzt terms ggf.
+    if (!is_array($events) || !$events) {
+        echo '<div class="notice notice-warning"><p>Keine Veranstaltungen gefunden.</p></div></div>';
         return;
     }
 
-    // Probeauswertung (erste 20)
-    $probe = [];
-    foreach (array_slice($links, 0, 20) as $u) {
-        $ev = $parser->get_cached_detail($u);
-        if (!$ev) continue;
-
-        $probe[] = [
-            'title'       => $ev['title']     ?? '',
-            'start'       => $ev['datetime']  ?? '',
-            'location'    => $ev['location']  ?? '',
-            'image'       => $ev['image']     ?? '',
-            'description' => $ev['desc']      ?? ($ev['description'] ?? ''),
-            'source_url'  => $u,
-        ];
-    }
-
-    kse_render_events_table_with_select($probe, 'kse_import_seevetal', 'kse_import_seevetal', 'kse-seevetal');
-
-    // Merke Blacklist-Zahl in verstecktem Feld (für Logging bei "Alles importieren")
-    echo '<form id="kse-bl-hidden" style="display:none"><input type="hidden" id="kse-bl-count" value="'.esc_attr($blacklisted).'"></form>';
-
+    kse_render_event_table($events, 'seevetal', 'Ausgewählte importieren');
     echo '</div>';
 }
 
-/* ============ Import-Handler (Einzelauswahl) ============ */
-
-add_action('admin_post_kse_import_miah', 'kse_handle_import_miah');
-function kse_handle_import_miah() {
-    if (!current_user_can('edit_posts')) wp_die('No permissions.');
-    check_admin_referer('kse_import_miah');
-
-    $urls = array_map('esc_url_raw', (array)($_POST['selected'] ?? []));
-    $urls = array_values(array_unique(array_filter($urls)));
-
-    $do   = sanitize_text_field($_POST['do'] ?? 'dry');
-
-    if (!class_exists('MusikInAltenHeidekirchenParser') || empty($urls)) {
-        wp_redirect(admin_url('admin.php?page=kse-miah&kse_msg='.rawurlencode('Keine Auswahl oder Parser nicht verfügbar.')));
-        exit;
+// ---------- Seite: Empore Buchholz ----------
+function kse_render_empore_admin() {
+    echo '<div class="wrap"><h1>Empore Buchholz – Parser</h1>';
+    if (!class_exists('EmporeBuchholzParser')) {
+        echo '<div class="notice notice-error"><p>Der Parser ist nicht geladen. Prüfe <code>crawler/EmporeBuchholzParser.php</code>.</p></div></div>';
+        return;
     }
 
-    $parser   = new MusikInAltenHeidekirchenParser();
-    $listUrl  = defined('MusikInAltenHeidekirchenParser::LIST_URL') ? MusikInAltenHeidekirchenParser::LIST_URL : '';
-    $all      = $parser->crawl($listUrl ?: 'https://musik-in-alten-heidekirchen.wir-e.de/termine', 200);
-    $byUrl    = [];
-    foreach ($all as $e) {
-        $u = $e['source_url'] ?? ($e['source'] ?? '');
-        if ($u) $byUrl[$u] = $e;
+    // POST: Import
+    if (!empty($_POST['kse_action']) && $_POST['kse_action']==='import_selected') {
+        kse_handle_import_selected('empore', 'Empore Buchholz');
+        echo '</div>'; return;
     }
 
-    $created = $updated = $skipped = 0;
-    if ($do === 'live' && !function_exists('kse_tec_upsert_event')) {
-        wp_redirect(admin_url('admin.php?page=kse-miah&kse_msg='.rawurlencode('Importer fehlt (includes/tec_import.php).')));
-        exit;
+    $parser = new EmporeBuchholzParser();
+    $events = $parser->crawl(); // erste Version
+    if (!is_array($events) || !$events) {
+        echo '<div class="notice notice-warning"><p>Keine Veranstaltungen gefunden.</p></div></div>';
+        return;
     }
 
-    foreach ($urls as $u) {
-        if (empty($byUrl[$u])) { $skipped++; continue; }
-        $ev = $byUrl[$u];
-        $payload = [
-            'title'       => $ev['title'] ?? '',
-            'start'       => $ev['start'] ?? ($ev['datetime'] ?? ''),
-            'description' => $ev['description'] ?? ($ev['description_html'] ?? ($ev['desc'] ?? '')),
-            'location'    => $ev['location'] ?? '',
-            'image'       => $ev['image'] ?? '',
-            'source_url'  => $u,
-        ];
-
-        if ($do === 'dry') { $skipped++; continue; }
-
-        $res = kse_tec_upsert_event($payload, [
-            'default_duration_minutes' => 120,
-            'category'                 => 'Musik in alten Heidekirchen',
-        ]);
-
-        if (($res['action'] ?? '') === 'updated') $updated++;
-        elseif (($res['action'] ?? '') === 'created') $created++;
-        else $skipped++;
-
-        $result = kse_tec_upsert_event($event, [
-        'default_duration_minutes' => 120,
-        'category' => $quelle === 'miah' ? 'Musik in alten Heidekirchen' : 'Gemeinde Seevetal',
-        ]);
-
-        $tec_link = !empty($result['permalink']) ? $result['permalink'] : '';
-        $src_link = !empty($event['source_url']) ? $event['source_url'] : '';
-
-        printf(
-        '<li><strong>%s</strong> — <a href="%s" target="_blank" rel="noopener">Quelle</a> → <a href="%s" target="_blank" rel="noopener">TEC #%d</a> <em>(%s)</em></li>',
-        esc_html($event['title'] ?? '(ohne Titel)'),
-        esc_url($src_link),
-        esc_url($tec_link),
-        (int)($result['post_id'] ?? 0),
-        esc_html($result['action'] ?? '')
-        );
-
-    }
-
-    if ($do === 'live' && function_exists('kse_stats_log')) {
-        kse_stats_log('MIAH', [
-            'scanned' => count($urls),
-            'created' => $created,
-            'updated' => $updated,
-            'skipped' => $skipped,
-            'blacklisted' => 0
-        ]);
-    }
-
-    $msg = ($do === 'dry')
-        ? 'Dry-Run erledigt: '.count($urls).' Auswahl(en).'
-        : "Import fertig: erstellt $created, aktualisiert $updated, übersprungen $skipped.";
-    wp_redirect(admin_url('admin.php?page=kse-miah&kse_msg='.rawurlencode($msg)));
-    exit;
+    kse_render_event_table($events, 'empore', 'Ausgewählte importieren');
+    echo '</div>';
 }
 
-add_action('admin_post_kse_import_seevetal', 'kse_handle_import_seevetal');
-function kse_handle_import_seevetal() {
-    if (!current_user_can('edit_posts')) wp_die('No permissions.');
-    check_admin_referer('kse_import_seevetal');
-
-    $urls = array_map('esc_url_raw', (array)($_POST['selected'] ?? []));
-    $urls = array_values(array_unique(array_filter($urls)));
-
-    $do   = sanitize_text_field($_POST['do'] ?? 'dry');
-
-    if (!class_exists('SeevetalParser') || empty($urls)) {
-        wp_redirect(admin_url('admin.php?page=kse-seevetal&kse_msg='.rawurlencode('Keine Auswahl oder Parser nicht verfügbar.')));
-        exit;
-    }
-    if ($do === 'live' && !function_exists('kse_tec_upsert_event')) {
-        wp_redirect(admin_url('admin.php?page=kse-seevetal&kse_msg='.rawurlencode('Importer fehlt (includes/tec_import.php).')));
-        exit;
-    }
-
-    $parser  = new SeevetalParser();
-    $created = $updated = $skipped = 0;
-
-    foreach ($urls as $u) {
-        $ev = $parser->get_cached_detail($u);
-        if (!$ev) { $skipped++; continue; }
-
-        $payload = [
-            'title'       => $ev['title'] ?? '',
-            'start'       => $ev['datetime'] ?? '',
-            'description' => $ev['desc'] ?? ($ev['description'] ?? ''),
-            'location'    => $ev['location'] ?? '',
-            'image'       => $ev['image'] ?? '',
-            'source_url'  => $u,
-        ];
-
-        if ($do === 'dry') { $skipped++; continue; }
-
-        $res = kse_tec_upsert_event($payload, [
-            'default_duration_minutes' => 120,
-            'category'                 => 'Gemeinde Seevetal', // <-- angepasst
-        ]);
-
-        if (($res['action'] ?? '') === 'updated') $updated++;
-        elseif (($res['action'] ?? '') === 'created') $created++;
-        else $skipped++;
-
-        $result = kse_tec_upsert_event($event, [
-        'default_duration_minutes' => 120,
-        'category' => $quelle === 'miah' ? 'Musik in alten Heidekirchen' : 'Gemeinde Seevetal',
-        ]);
-
-        $tec_link = !empty($result['permalink']) ? $result['permalink'] : '';
-        $src_link = !empty($event['source_url']) ? $event['source_url'] : '';
-
-        printf(
-        '<li><strong>%s</strong> — <a href="%s" target="_blank" rel="noopener">Quelle</a> → <a href="%s" target="_blank" rel="noopener">TEC #%d</a> <em>(%s)</em></li>',
-        esc_html($event['title'] ?? '(ohne Titel)'),
-        esc_url($src_link),
-        esc_url($tec_link),
-        (int)($result['post_id'] ?? 0),
-        esc_html($result['action'] ?? '')
-        );
-
-    }
-
-    if ($do === 'live' && function_exists('kse_stats_log')) {
-        kse_stats_log('SEEVETAL', [
-            'scanned' => count($urls),
-            'created' => $created,
-            'updated' => $updated,
-            'skipped' => $skipped,
-            'blacklisted' => 0
-        ]);
-    }
-
-    $msg = ($do === 'dry')
-        ? 'Dry-Run erledigt: '.count($urls).' Auswahl(en).'
-        : "Import fertig: erstellt $created, aktualisiert $updated, übersprungen $skipped.";
-    wp_redirect(admin_url('admin.php?page=kse-seevetal&kse_msg='.rawurlencode($msg)));
-    exit;
+// ---------- Stub-Seiten ----------
+function kse_render_settings_stub() {
+    echo '<div class="wrap"><h1>Einstellungen</h1><p>Mehr in Kürze.</p></div>';
 }
-
-/* ============ Alles-importieren (Komfort) ============ */
-
-add_action('admin_post_kse_import_miah_all', 'kse_handle_import_miah_all');
-function kse_handle_import_miah_all() {
-    if (!current_user_can('edit_posts')) wp_die('No permissions.');
-    check_admin_referer('kse_import_miah_all');
-
-    $do = sanitize_text_field($_POST['do'] ?? 'dry');
-
-    if (!class_exists('MusikInAltenHeidekirchenParser')) {
-        wp_redirect(admin_url('admin.php?page=kse-miah&kse_msg='.rawurlencode('Parser nicht verfügbar.')));
-        exit;
-    }
-    $parser  = new MusikInAltenHeidekirchenParser();
-    $listUrl = defined('MusikInAltenHeidekirchenParser::LIST_URL')
-        ? MusikInAltenHeidekirchenParser::LIST_URL
-        : 'https://musik-in-alten-heidekirchen.wir-e.de/termine';
-    $events  = $parser->crawl($listUrl, 200);
-
-    $scanned = count($events);
-    $created = $updated = $skipped = 0;
-
-    if ($do === 'live' && !function_exists('kse_tec_upsert_event')) {
-        wp_redirect(admin_url('admin.php?page=kse-miah&kse_msg='.rawurlencode('Importer fehlt (includes/tec_import.php).')));
-        exit;
-    }
-
-    foreach ($events as $ev) {
-        $src = $ev['source_url'] ?? ($ev['source'] ?? '');
-        if (!$src) { $skipped++; continue; }
-
-        if ($do === 'dry') { $skipped++; continue; }
-
-        $res = kse_tec_upsert_event([
-            'title'       => $ev['title'] ?? '',
-            'start'       => $ev['start'] ?? ($ev['datetime'] ?? ''),
-            'description' => $ev['description'] ?? ($ev['description_html'] ?? ($ev['desc'] ?? '')),
-            'location'    => $ev['location'] ?? '',
-            'image'       => $ev['image'] ?? '',
-            'source_url'  => $src,
-        ], [
-            'default_duration_minutes' => 120,
-            'category'                 => 'Musik in alten Heidekirchen',
-        ]);
-
-        if (($res['action'] ?? '') === 'updated') $updated++;
-        elseif (($res['action'] ?? '') === 'created') $created++;
-        else $skipped++;
-
-        $result = kse_tec_upsert_event($event, [
-        'default_duration_minutes' => 120,
-        'category' => $quelle === 'miah' ? 'Musik in alten Heidekirchen' : 'Gemeinde Seevetal',
-        ]);
-
-        $tec_link = !empty($result['permalink']) ? $result['permalink'] : '';
-        $src_link = !empty($event['source_url']) ? $event['source_url'] : '';
-
-        printf(
-        '<li><strong>%s</strong> — <a href="%s" target="_blank" rel="noopener">Quelle</a> → <a href="%s" target="_blank" rel="noopener">TEC #%d</a> <em>(%s)</em></li>',
-        esc_html($event['title'] ?? '(ohne Titel)'),
-        esc_url($src_link),
-        esc_url($tec_link),
-        (int)($result['post_id'] ?? 0),
-        esc_html($result['action'] ?? '')
-        );
-
-    }
-
-    if ($do === 'live' && function_exists('kse_stats_log')) {
-        kse_stats_log('MIAH', compact('scanned','created','updated','skipped') + ['blacklisted'=>0]);
-    }
-
-    $msg = ($do === 'dry')
-        ? "Dry-Run: gesamt $scanned Einträge geprüft."
-        : "Alles importiert: erstellt $created, aktualisiert $updated, übersprungen $skipped (gesamt $scanned).";
-    wp_redirect(admin_url('admin.php?page=kse-miah&kse_msg='.rawurlencode($msg)));
-    exit;
-}
-
-add_action('admin_post_kse_import_seevetal_all', 'kse_handle_import_seevetal_all');
-function kse_handle_import_seevetal_all() {
-    if (!current_user_can('edit_posts')) wp_die('No permissions.');
-    check_admin_referer('kse_import_seevetal_all');
-
-    $do = sanitize_text_field($_POST['do'] ?? 'dry');
-
-    if (!class_exists('SeevetalParser')) {
-        wp_redirect(admin_url('admin.php?page=kse-seevetal&kse_msg='.rawurlencode('Parser nicht verfügbar.')));
-        exit;
-    }
-
-    $opts = get_option('kse_options', []);
-    $wl = array_values(array_filter(array_map('trim', explode(',', $opts['seevetal_whitelist'] ?? 'Musik,Kultur'))));
-    $bl = array_values(array_filter(array_map('trim', explode(',', $opts['seevetal_blacklist'] ?? ''))));
-
-    $parser = new SeevetalParser();
-    $links = [];
-    foreach ($wl as $term) {
-        if ($term === '') continue;
-        $links = array_merge($links, $parser->collect_detail_links($term));
-    }
-    $links = array_values(array_unique($links));
-
-    $blacklisted = 0;
-    if ($bl) {
-        $links = array_values(array_filter($links, function ($u) use ($bl, &$blacklisted) {
-            foreach ($bl as $b) {
-                if ($b !== '' && stripos($u, $b) !== false) { $blacklisted++; return false; }
-            }
-            return true;
-        }));
-    }
-
-    $scanned = count($links);
-    $created = $updated = $skipped = 0;
-
-    if ($do === 'live' && !function_exists('kse_tec_upsert_event')) {
-        wp_redirect(admin_url('admin.php?page=kse-seevetal&kse_msg='.rawurlencode('Importer fehlt (includes/tec_import.php).')));
-        exit;
-    }
-
-    foreach ($links as $u) {
-        $ev = $parser->get_cached_detail($u);
-        if (!$ev) { $skipped++; continue; }
-
-        if ($do === 'dry') { $skipped++; continue; }
-
-        $res = kse_tec_upsert_event([
-            'title'       => $ev['title'] ?? '',
-            'start'       => $ev['datetime'] ?? '',
-            'description' => $ev['desc'] ?? ($ev['description'] ?? ''),
-            'location'    => $ev['location'] ?? '',
-            'image'       => $ev['image'] ?? '',
-            'source_url'  => $u,
-        ], [
-            'default_duration_minutes' => 120,
-            'category'                 => 'Gemeinde Seevetal',
-        ]);
-
-        if (($res['action'] ?? '') === 'updated') $updated++;
-        elseif (($res['action'] ?? '') === 'created') $created++;
-        else $skipped++;
-
-        $result = kse_tec_upsert_event($event, [
-        'default_duration_minutes' => 120,
-        'category' => $quelle === 'miah' ? 'Musik in alten Heidekirchen' : 'Gemeinde Seevetal',
-        ]);
-
-        $tec_link = !empty($result['permalink']) ? $result['permalink'] : '';
-        $src_link = !empty($event['source_url']) ? $event['source_url'] : '';
-
-        printf(
-        '<li><strong>%s</strong> — <a href="%s" target="_blank" rel="noopener">Quelle</a> → <a href="%s" target="_blank" rel="noopener">TEC #%d</a> <em>(%s)</em></li>',
-        esc_html($event['title'] ?? '(ohne Titel)'),
-        esc_url($src_link),
-        esc_url($tec_link),
-        (int)($result['post_id'] ?? 0),
-        esc_html($result['action'] ?? '')
-        );
-
-    }
-
-    if ($do === 'live' && function_exists('kse_stats_log')) {
-        kse_stats_log('SEEVETAL', compact('scanned','created','updated','skipped') + ['blacklisted'=>$blacklisted]);
-    }
-
-    $msg = ($do === 'dry')
-        ? "Dry-Run: gesamt $scanned Einträge geprüft; Blacklist: $blacklisted."
-        : "Alles importiert: erstellt $created, aktualisiert $updated, übersprungen $skipped; Blacklist: $blacklisted (gesamt $scanned).";
-    wp_redirect(admin_url('admin.php?page=kse-seevetal&kse_msg='.rawurlencode($msg)));
-    exit;
+function kse_render_stats_stub() {
+    echo '<div class="wrap"><h1>Statistik</h1><p>Mehr in Kürze.</p></div>';
 }
