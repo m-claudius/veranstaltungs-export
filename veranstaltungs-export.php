@@ -14,6 +14,7 @@ if (!defined('KSE_PLUGIN_FILE')) define('KSE_PLUGIN_FILE', __FILE__);
 
 require_once KSE_PLUGIN_DIR . 'crawler/MusikInAltenHeidekirchenParser.php';
 require_once KSE_PLUGIN_DIR . 'crawler/SeevetalParser.php';
+require_once KSE_PLUGIN_DIR . 'crawler/EmporeBuchholzParser.php';
 require_once KSE_PLUGIN_DIR . 'admin/menu.php';
 require_once KSE_PLUGIN_DIR . 'admin/settings.php';
 require_once KSE_PLUGIN_DIR . 'includes/tec_import.php';

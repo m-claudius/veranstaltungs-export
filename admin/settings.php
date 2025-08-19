@@ -123,14 +123,16 @@ function kse_reschedule_cron($hook, $freq) {
 
 /* -------- Settings-Seite rendern -------- */
 
-function kse_render_settings_admin() {
-    echo '<div class="wrap"><h1>Einstellungen</h1>
-    <form method="post" action="options.php">';
-    settings_fields('kse_settings');
-    do_settings_sections('kse_settings');
-    submit_button();
-    echo '</form></div>';
-}
+    if (!function_exists('kse_settings_render_page')) {
+        function kse_settings_render_page() {
+            echo '<div class="wrap"><h1>Einstellungen</h1>
+            <form method="post" action="options.php">';
+            settings_fields('kse_settings');
+            do_settings_sections('kse_settings');
+            submit_button();
+            echo '</form></div>';
+        }
+    }
 
 /* -------- Cron-Runner (Live-Import) -------- */
 

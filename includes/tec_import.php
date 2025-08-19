@@ -1,7 +1,14 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-/** Datum in WP-Lokalzeit normalisieren */
+/**
+ * Utilities for importing/upserting events into The Events Calendar (TEC)
+ * without requiring manual "Update" in the editor.
+ *
+ * This file is intentionally self-contained. All requires are handled upstream.
+ */
+
+/** Format a datetime string in WP local time (Y-m-d H:i:s) */
 if (!function_exists('kse_normalize_datetime_local')) {
 function kse_normalize_datetime_local($in) {
     if (empty($in)) $in = current_time('mysql');
@@ -9,7 +16,7 @@ function kse_normalize_datetime_local($in) {
     if (!$ts) $ts = time();
     return date_i18n('Y-m-d H:i:s', $ts);
 }}
-
+/** Find an event by a specific meta key/value (exact match). */
 if (!function_exists('kse_find_event_by_meta')) {
 function kse_find_event_by_meta($key, $value) {
     $q = new WP_Query([
@@ -17,29 +24,68 @@ function kse_find_event_by_meta($key, $value) {
         'post_status'    => 'any',
         'posts_per_page' => 1,
         'no_found_rows'  => true,
-        'meta_query'     => [[ 'key' => $key, 'value' => $value, 'compare' => '=' ]],
-        'fields'         => 'ids',
+        'meta_query'     => [
+            [
+                'key'   => $key,
+                'value' => $value,
+            ]
+        ],
+        'fields' => 'ids',
     ]);
-    return $q->posts ? (int)$q->posts[0] : 0;
+    return $q->have_posts() ? (int)$q->posts[0] : 0;
 }}
-
+/** Find an event by exact title and start datetime. */
 if (!function_exists('kse_find_event_by_title_and_start')) {
-function kse_find_event_by_title_and_start($title, $startLocal) {
+function kse_find_event_by_title_and_start($title, $start) {
+    $title = trim((string)$title);
+    $start = kse_normalize_datetime_local($start);
+    if ($title === '' || $start === '') return 0;
+
     $q = new WP_Query([
         'post_type'      => 'tribe_events',
         'post_status'    => 'any',
-        'posts_per_page' => 10,
+        'posts_per_page' => 30,
         'no_found_rows'  => true,
-        's'              => $title,
-        'fields'         => 'ids',
-        'meta_query'     => [[ 'key' => '_EventStartDate', 'value' => $startLocal, 'compare' => '=' ]],
+        'meta_query'     => [
+            [
+                'key'   => '_EventStartDate',
+                'value' => $start,
+            ]
+        ],
+        'fields' => 'ids',
     ]);
-    return $q->posts ? (int)$q->posts[0] : 0;
+    if (!$q->have_posts()) return 0;
+    foreach ($q->posts as $pid) {
+        if (strcasecmp(get_the_title($pid), $title) === 0) {
+            return (int)$pid;
+        }
+    }
+    return 0;
 }}
+/** Very small guard: allow skipping updates on protected posts. */
+if (!function_exists('kse_can_overwrite_event')) {
+function kse_can_overwrite_event($post_id, $source_slug = '') {
+    // If someone set a manual protection flag, never overwrite
+    $protected = get_post_meta($post_id, '_kse_protect', true);
+    if ($protected) return ['blocked'=>true, 'reason'=>'protected_flag'];
 
+    // If post has a different source and is protected by category, skip
+    $foreign = get_post_meta($post_id, '_kse_source_slug', true);
+    if ($foreign && $source_slug && $foreign !== $source_slug) {
+        // optional: only block if it has a known source category that is not ours
+        $cats = wp_get_post_terms($post_id, 'tribe_events_cat', ['fields'=>'names']);
+        $cats = array_map('strval', (array)$cats);
+        if (!empty($cats)) {
+            return ['blocked'=>true, 'reason'=>'different_source'];
+        }
+    }
+    return ['blocked'=>false];
+}}
+/** Get or create an event category by name. */
 if (!function_exists('kse_get_or_create_event_cat')) {
 function kse_get_or_create_event_cat($name) {
-    if (!$name) return 0;
+    $name = trim((string)$name);
+    if ($name === '') return 0;
     $tax = 'tribe_events_cat';
     $t = term_exists($name, $tax);
     if (!$t || is_wp_error($t)) {
@@ -48,50 +94,7 @@ function kse_get_or_create_event_cat($name) {
     }
     return (int)($t['term_id'] ?? $t);
 }}
-
-/** bekannte Quell-Kategorien (erweiterbar per Filter) */
-if (!function_exists('kse_known_source_categories')) {
-function kse_known_source_categories() {
-    $defaults = ['Gemeinde Seevetal', 'Musik in alten Heidekirchen'];
-    $list = apply_filters('kse_known_source_categories', $defaults);
-    $list = array_values(array_filter(array_map('strval', (array)$list)));
-    return $list ?: $defaults;
-}}
-
-/** Schutzlogik für Updates: eigene / fremde Quelle */
-if (!function_exists('kse_guard_update_policy')) {
-function kse_guard_update_policy($post_id, $source_slug, $source_category) {
-    // 1) „eigene Veranstaltungen“ NIE ändern (Kategorie ODER Tag)
-    $own_label = apply_filters('kse_own_protect_term', 'eigene Veranstaltungen');
-    if ($own_label) {
-        if (has_term($own_label, 'tribe_events_cat', $post_id) || has_term($own_label, 'post_tag', $post_id)) {
-            return ['blocked' => true, 'reason' => 'own_protected'];
-        }
-    }
-
-    // 2) Meta-Marker prüfen
-    $marker = (string)get_post_meta($post_id, '_kse_source_slug', true);
-    if ($marker !== '' && $source_slug !== '' && $marker !== $source_slug) {
-        return ['blocked' => true, 'reason' => 'foreign_source_meta', 'marker' => $marker];
-    }
-
-    // 3) Kategorien prüfen (nur wenn eine der bekannten Quell-Kategorien vorhanden ist)
-    $known = array_map('mb_strtolower', kse_known_source_categories());
-    $event_terms = wp_get_object_terms($post_id, 'tribe_events_cat', ['fields' => 'names']);
-    $event_lower = array_map('mb_strtolower', (array)$event_terms);
-    $has_any_known = (bool) array_intersect($known, $event_lower);
-
-    if ($has_any_known) {
-        $current_lower = mb_strtolower((string)$source_category);
-        if ($current_lower && !in_array($current_lower, $event_lower, true)) {
-            return ['blocked' => true, 'reason' => 'foreign_source_category'];
-        }
-    }
-
-    return ['blocked' => false];
-}}
-
-/** Bild setzen (idempotent) */
+/** Attach an image by URL and set as featured image (idempotent). */
 if (!function_exists('kse_attach_image_to_post')) {
 function kse_attach_image_to_post($imageUrl, $post_id, $desc = '') {
     if (!$imageUrl || !$post_id) return 0;
@@ -107,56 +110,94 @@ function kse_attach_image_to_post($imageUrl, $post_id, $desc = '') {
     update_post_meta($post_id, '_kse_image_src', esc_url_raw($imageUrl));
     return (int)$att_id;
 }}
+/** Internal: trigger TEC indexing/hooks so permalinks work immediately. */
+if (!function_exists('kse_trigger_tec_index')) {
+function kse_trigger_tec_index($post_id, $is_update) {
+    $post = get_post($post_id);
 
+    // Simulate the hooks that fire when saving in the editor
+    do_action('save_post',               $post_id, $post, $is_update);
+    do_action('save_post_tribe_events',  $post_id, $post, $is_update);
+
+    // TEC 6 Custom Tables index maintenance (if available)
+    try {
+        if (function_exists('tribe')) {
+            if (class_exists('\\TEC\\Events\\Custom_Tables\\V1\\Manager')) {
+                $mgr = tribe(\TEC\Events\Custom_Tables\V1\Manager::class);
+                if (method_exists($mgr, 'rebuild_index_for_post')) {
+                    $mgr->rebuild_index_for_post($post_id);
+                }
+            }
+            if (class_exists('\\TEC\\Events\\Custom_Tables\\V1\\WP\\Query')) {
+                $q = tribe(\TEC\Events\Custom_Tables\V1\WP\Query::class);
+                if (method_exists($q, 'reset_cache')) $q->reset_cache();
+            }
+        }
+    } catch (\Throwable $e) {
+        // ignore
+    }
+
+    clean_post_cache($post_id);
+    wp_cache_delete($post_id, 'posts');
+    wp_cache_delete($post_id, 'post_meta');
+}}
 /**
- * UPSERT in TEC mit Quell-Schutz
- * $payload: ['title','description','start','location','image','source_url']
- * $opts: ['default_duration_minutes'=>int, 'source_slug'=>string, 'source_category'=>string]
+ * Upsert into TEC with source-guard.
+ * $payload: ['title','description','start','end?','location','image','source_url']
+ * $opts:    ['default_duration_minutes'=>int, 'source_slug'=>string, 'source_category'=>string]
  *
- * Rückgabe: ['action'=>created|updated|skipped_*|error, 'post_id'=>int, 'permalink'=>string, 'reason'=>string?]
+ * Return: ['action'=>created|updated|skipped_*|error, 'post_id'=>int, 'permalink'=>string, 'reason'?]
  */
 if (!function_exists('kse_tec_upsert_event')) {
 function kse_tec_upsert_event(array $payload, array $opts = []) {
-
     $title   = trim((string)($payload['title'] ?? ''));
     $desc    = (string)($payload['description'] ?? '');
-    $start   = kse_normalize_datetime_local($payload['start'] ?? ($payload['datetime'] ?? ''));
+    $start   = kse_normalize_datetime_local($payload['start'] ?? '');
+    $endIn   = (string)($payload['end'] ?? '');
     $loc     = trim((string)($payload['location'] ?? ''));
-    $image   = esc_url_raw($payload['image'] ?? '');
-    $srcUrl  = esc_url_raw($payload['source_url'] ?? ($payload['source'] ?? ''));
+    $image   = trim((string)($payload['image'] ?? ''));
+    $srcUrl  = esc_url_raw((string)($payload['source_url'] ?? ''));
 
-    $duration       = (int)($opts['default_duration_minutes'] ?? 120);
-    if ($duration < 15) $duration = 120;
-    $source_slug    = trim((string)($opts['source_slug'] ?? ''));
-    $source_catname = trim((string)($opts['source_category'] ?? ''));
+    $source_slug     = sanitize_key((string)($opts['source_slug'] ?? ''));
+    $source_catname  = trim((string)($opts['source_category'] ?? ''));
+    $duration        = (int)($opts['default_duration_minutes'] ?? 120);
 
-    $endTs   = strtotime($start) + $duration * 60;
-    $end     = date_i18n('Y-m-d H:i:s', $endTs);
+    if ($title === '') return ['action'=>'error', 'reason'=>'missing_title'];
+    if ($start === '') $start = current_time('mysql');
 
-    // 1) Event wiederfinden (idempotent)
+    $end = '';
+    if ($endIn !== '') {
+        $end = kse_normalize_datetime_local($endIn);
+    } else {
+        $endTs = strtotime($start) + max(1, $duration) * 60;
+        $end   = date_i18n('Y-m-d H:i:s', $endTs);
+    }
+
+    // 1) Find existing (idempotent)
     $post_id = 0;
     if ($srcUrl) {
         $post_id = kse_find_event_by_meta('_kse_source_url', $srcUrl);
         if (!$post_id) $post_id = kse_find_event_by_meta('_EventURL', $srcUrl);
     }
-    if (!$post_id && $title) {
-        $post_id = kse_find_event_by_title_and_start($title, $start);
+    if (!$post_id) {
+        $maybe = kse_find_event_by_title_and_start($title, $start);
+        if ($maybe) $post_id = $maybe;
     }
 
-    // 2) Schutz prüfen, falls es das Event schon gibt
+    // 2) Guard (skip if protected)
     if ($post_id) {
-        $guard = kse_guard_update_policy($post_id, $source_slug, $source_catname);
+        $guard = kse_can_overwrite_event($post_id, $source_slug);
         if (!empty($guard['blocked'])) {
             return [
-                'action'    => 'skipped_'.$guard['reason'],
-                'post_id'   => $post_id,
+                'action' => 'skipped_guard',
+                'post_id'=> $post_id,
                 'permalink' => get_permalink($post_id),
-                'reason'    => $guard['reason'],
+                'reason' => $guard['reason'] ?? 'guard',
             ];
         }
     }
 
-    // 3) Insert oder Update
+    // 3) Insert / Update (do not set post_name; let WP create a nice unique slug)
     $postarr = [
         'post_type'    => 'tribe_events',
         'post_title'   => $title ?: '(ohne Titel)',
@@ -164,24 +205,44 @@ function kse_tec_upsert_event(array $payload, array $opts = []) {
         'post_status'  => 'publish',
     ];
 
+    $action = 'created';
     if ($post_id) {
         $postarr['ID'] = $post_id;
-        $post_id = wp_update_post($postarr, true);
+        $res = wp_update_post($postarr, true);
+        if (is_wp_error($res)) return ['action'=>'error', 'reason'=>$res->get_error_message()];
+        $post_id = (int)$res;
         $action  = 'updated';
     } else {
-        $slug = sanitize_title($title.'-'.substr(md5($srcUrl ?: $title.$start),0,8));
-        $postarr['post_name'] = $slug;
-        $post_id = wp_insert_post($postarr, true);
+        $res = wp_insert_post($postarr, true);
+        if (is_wp_error($res)) return ['action'=>'error', 'reason'=>$res->get_error_message()];
+        $post_id = (int)$res;
         $action  = 'created';
     }
 
-    if (is_wp_error($post_id) || !$post_id) {
-        return ['action'=>'error','error'=> is_wp_error($post_id) ? $post_id->get_error_message() : 'insert_failed'];
+    // 4) Set TEC dates via API if available (ensures indexing), else meta fallback
+    if (class_exists('Tribe__Events__API')) {
+        try {
+            Tribe__Events__API::update_event($post_id, [
+                'post_status' => 'publish',
+                'start_date'  => $start,
+                'end_date'    => $end,
+            ]);
+        } catch (\Throwable $e) {
+            update_post_meta($post_id, '_EventStartDate',    $start);
+            update_post_meta($post_id, '_EventEndDate',      $end);
+            update_post_meta($post_id, '_EventStartDateUTC', get_gmt_from_date($start));
+            update_post_meta($post_id, '_EventEndDateUTC',   get_gmt_from_date($end));
+            update_post_meta($post_id, '_EventDuration',     max(1, strtotime($end) - strtotime($start)));
+        }
+    } else {
+        update_post_meta($post_id, '_EventStartDate',    $start);
+        update_post_meta($post_id, '_EventEndDate',      $end);
+        update_post_meta($post_id, '_EventStartDateUTC', get_gmt_from_date($start));
+        update_post_meta($post_id, '_EventEndDateUTC',   get_gmt_from_date($end));
+        update_post_meta($post_id, '_EventDuration',     max(1, strtotime($end) - strtotime($start)));
     }
 
-    // 4) Metadaten
-    update_post_meta($post_id, '_EventStartDate', $start);
-    update_post_meta($post_id, '_EventEndDate',   $end);
+    // 5) Source metas
     if ($srcUrl) {
         update_post_meta($post_id, '_kse_source_url', $srcUrl);
         update_post_meta($post_id, '_EventURL',       $srcUrl);
@@ -189,24 +250,44 @@ function kse_tec_upsert_event(array $payload, array $opts = []) {
     if ($source_slug !== '') {
         update_post_meta($post_id, '_kse_source_slug', $source_slug);
     }
+
+    // 6) Append location once (as requested)
     if ($loc) {
         update_post_meta($post_id, '_kse_location_raw', $loc);
         $content = get_post_field('post_content', $post_id);
-        if ($content && strpos($content, $loc) === false) {
-            wp_update_post(['ID'=>$post_id, 'post_content' => $content . "\n\n<p><strong>Ort:</strong> ".esc_html($loc)."</p>"]);
+        if ($content && mb_stripos($content, $loc) === false) {
+            wp_update_post([
+                'ID'           => $post_id,
+                'post_content' => $content . "\n\n<p><strong>Ort:</strong> " . esc_html($loc) . "</p>",
+            ]);
         }
     }
 
-    // 5) Kategorie der Quelle setzen/ergänzen (ohne fremde zu entfernen)
+    // 7) Append "Quelle" line once (idempotent)
+    if ($srcUrl) {
+        $cur = get_post_field('post_content', $post_id);
+        if ($cur && stripos($cur, 'Quelle: (C)') === false) {
+            $append = "\n\n<p><em>Quelle: (C) <a href=\"" . esc_url($srcUrl) . "\" target=\"_blank\" rel=\"noopener\">" . esc_html($srcUrl) . "</a></em></p>";
+            wp_update_post([
+                'ID'           => $post_id,
+                'post_content' => $cur . $append,
+            ]);
+        }
+    }
+
+    // 8) Source category (append)
     if ($source_catname) {
         $term_id = kse_get_or_create_event_cat($source_catname);
         if ($term_id) wp_set_object_terms($post_id, [$term_id], 'tribe_events_cat', true);
     }
 
-    // 6) Bild (idempotent)
+    // 9) Featured image (idempotent)
     if ($image) {
         kse_attach_image_to_post($image, $post_id, $title);
     }
+
+    // 10) Trigger TEC indexing/caches so permalink works immediately
+    kse_trigger_tec_index($post_id, $action === 'updated');
 
     return [
         'action'    => $action,
