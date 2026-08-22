@@ -1,0 +1,9 @@
+# Fremd-Plugin, kommerziell lizenziert – gehört nicht in dieses Repo
+the-events-calendar-filterbar/
+
+# Lokale Quelltext-Dumps / Scratch-Dateien
+quelltext-*.txt
+Parser-für-*.txt
+
+# Build-/Deploy-Artefakte
+*.zip
