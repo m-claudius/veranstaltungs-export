@@ -188,125 +188,191 @@ function kse_reschedule_cron($hook, $freq) {
 add_action('kse_cron_miah', 'kse_cron_run_miah');
 function kse_cron_run_miah() {
     if (!class_exists('MusikInAltenHeidekirchenParser') || !function_exists('kse_tec_upsert_event')) return;
-    $parser  = new MusikInAltenHeidekirchenParser();
-    $listUrl = defined('MusikInAltenHeidekirchenParser::LIST_URL')
-        ? MusikInAltenHeidekirchenParser::LIST_URL
-        : 'https://musik-in-alten-heidekirchen.wir-e.de/termine';
-    $events  = $parser->crawl($listUrl, 100);
 
-    $scanned = count($events); $created=$updated=$skipped=0;
-
-    foreach ($events as $ev) {
-        $src = $ev['source_url'] ?? ($ev['source'] ?? '');
-        if (!$src) { $skipped++; continue; }
-        $res = kse_tec_upsert_event([
-            'title'       => $ev['title'] ?? '',
-            'start'       => $ev['start'] ?? ($ev['datetime'] ?? ''),
-            'description' => $ev['description'] ?? ($ev['description_html'] ?? ($ev['desc'] ?? '')),
-            'location'    => $ev['location'] ?? '',
-            'image'       => $ev['image'] ?? '',
-            'source_url'  => $src,
-        ], [
-            'default_duration_minutes' => 120,
-            'category'                 => 'Musik in alten Heidekirchen',
-        ]);
-        if (($res['action'] ?? '') === 'updated') $updated++;
-        elseif (($res['action'] ?? '') === 'created') $created++;
-        else $skipped++;
+    if (function_exists('kse_lock_acquire') && !kse_lock_acquire('miah')) {
+        if (function_exists('kse_stats_log')) {
+            kse_stats_log('MIAH', ['scanned'=>0,'created'=>0,'updated'=>0,'skipped'=>0,'blacklisted'=>0,'note'=>'Lauf übersprungen: vorheriger Lauf noch aktiv']);
+        }
+        return;
     }
 
-    if (function_exists('kse_stats_log')) {
-        kse_stats_log('MIAH', compact('scanned','created','updated','skipped') + ['blacklisted'=>0]);
+    try {
+        $parser  = new MusikInAltenHeidekirchenParser();
+        $listUrl = defined('MusikInAltenHeidekirchenParser::LIST_URL')
+            ? MusikInAltenHeidekirchenParser::LIST_URL
+            : 'https://musik-in-alten-heidekirchen.wir-e.de/termine';
+        $events  = $parser->crawl($listUrl, 100);
+
+        $scanned = count($events); $created=$updated=$skipped=0;
+
+        foreach ($events as $ev) {
+            $src = $ev['source_url'] ?? ($ev['source'] ?? '');
+            if (!$src) { $skipped++; continue; }
+            $res = kse_tec_upsert_event([
+                'title'       => $ev['title'] ?? '',
+                'start'       => $ev['start'] ?? ($ev['datetime'] ?? ''),
+                'description' => $ev['description'] ?? ($ev['description_html'] ?? ($ev['desc'] ?? '')),
+                'location'    => $ev['location'] ?? '',
+                'image'       => $ev['image'] ?? '',
+                'source_url'  => $src,
+            ], [
+                'default_duration_minutes' => 120,
+                'source_slug'              => 'miah',
+                'source_category'          => 'Musik in alten Heidekirchen',
+            ]);
+            if (($res['action'] ?? '') === 'updated') $updated++;
+            elseif (($res['action'] ?? '') === 'created') $created++;
+            else $skipped++;
+        }
+
+        if (function_exists('kse_stats_log')) {
+            kse_stats_log('MIAH', compact('scanned','created','updated','skipped') + ['blacklisted'=>0]);
+        }
+    } finally {
+        if (function_exists('kse_lock_release')) kse_lock_release('miah');
     }
 }
 
 add_action('kse_cron_seevetal', 'kse_cron_run_seevetal');
 function kse_cron_run_seevetal() {
     if (!class_exists('SeevetalParser') || !function_exists('kse_tec_upsert_event')) return;
-    $opts = get_option('kse_options', []);
-    $wl = array_values(array_filter(array_map('trim', explode(',', $opts['seevetal_whitelist'] ?? 'Musik,Kultur'))));
-    $bl = array_values(array_filter(array_map('trim', explode(',', $opts['seevetal_blacklist'] ?? ''))));
 
-    $parser = new SeevetalParser();
-    $links = [];
-    foreach ($wl as $term) {
-        $links = array_merge($links, $parser->collect_detail_links($term));
-    }
-    $links = array_values(array_unique($links));
-
-    $blacklisted = 0;
-    if ($bl) {
-        $links = array_values(array_filter($links, function ($u) use ($bl, &$blacklisted) {
-            foreach ($bl as $b) {
-                if ($b !== '' && stripos($u, $b) !== false) { $blacklisted++; return false; }
-            }
-            return true;
-        }));
+    // Überlappende Läufe würden dieselben Events doppelt anlegen
+    if (function_exists('kse_lock_acquire') && !kse_lock_acquire('seevetal')) {
+        if (function_exists('kse_stats_log')) {
+            kse_stats_log('SEEVETAL', ['scanned'=>0,'created'=>0,'updated'=>0,'skipped'=>0,'blacklisted'=>0,'note'=>'Lauf übersprungen: vorheriger Lauf noch aktiv']);
+        }
+        return;
     }
 
-    $scanned = count($links); $created=$updated=$skipped=0;
+    try {
+        $opts = get_option('kse_options', []);
+        $wl = array_values(array_filter(array_map('trim', explode(',', $opts['seevetal_whitelist'] ?? 'Musik,Kultur'))));
+        $bl = array_values(array_filter(array_map('trim', explode(',', $opts['seevetal_blacklist'] ?? ''))));
 
-    foreach ($links as $u) {
-        $ev = $parser->get_cached_detail($u);
-        if (!$ev) { $skipped++; continue; }
-        $res = kse_tec_upsert_event([
-            'title'       => $ev['title'] ?? '',
-            'start'       => $ev['datetime'] ?? '',
-            'description' => $ev['desc'] ?? ($ev['description'] ?? ''),
-            'location'    => $ev['location'] ?? '',
-            'image'       => $ev['image'] ?? '',
-            'source_url'  => $u,
-        ], [
-            'default_duration_minutes' => 120,
-            'category'                 => 'Gemeinde Seevetal',
-        ]);
-        if (($res['action'] ?? '') === 'updated') $updated++;
-        elseif (($res['action'] ?? '') === 'created') $created++;
-        else $skipped++;
-    }
+        $parser = new SeevetalParser();
+        $links = [];
+        foreach ($wl as $term) {
+            $links = array_merge($links, $parser->collect_detail_links($term));
+        }
+        $links = kse_unique_links_by_identity($links, 'seevetal');
 
-    if (function_exists('kse_stats_log')) {
-        kse_stats_log('SEEVETAL', compact('scanned','created','updated','skipped') + ['blacklisted'=>$blacklisted]);
+        $blacklisted = 0;
+        if ($bl) {
+            $links = array_values(array_filter($links, function ($u) use ($bl, &$blacklisted) {
+                foreach ($bl as $b) {
+                    if ($b !== '' && stripos($u, $b) !== false) { $blacklisted++; return false; }
+                }
+                return true;
+            }));
+        }
+
+        $scanned = count($links); $created=$updated=$skipped=0;
+
+        foreach ($links as $u) {
+            $ev = $parser->get_cached_detail($u);
+            if (!$ev) { $skipped++; continue; }
+            $res = kse_tec_upsert_event([
+                'title'       => $ev['title'] ?? '',
+                'start'       => $ev['datetime'] ?? '',
+                'end'         => $ev['end'] ?? '',
+                'description' => $ev['desc'] ?? ($ev['description'] ?? ''),
+                'location'    => $ev['location'] ?? '',
+                'image'       => $ev['image'] ?? '',
+                'source_url'  => $u,
+            ], [
+                'default_duration_minutes' => 120,
+                'source_slug'              => 'seevetal',
+                'source_category'          => 'Gemeinde Seevetal',
+            ]);
+            if (($res['action'] ?? '') === 'updated') $updated++;
+            elseif (($res['action'] ?? '') === 'created') $created++;
+            else $skipped++;
+        }
+
+        if (function_exists('kse_stats_log')) {
+            kse_stats_log('SEEVETAL', compact('scanned','created','updated','skipped') + ['blacklisted'=>$blacklisted]);
+        }
+    } finally {
+        if (function_exists('kse_lock_release')) kse_lock_release('seevetal');
     }
 }
+
+/**
+ * Entfernt aus einer Link-Liste alles, was auf dieselbe Veranstaltung zeigt.
+ * Nolis liefert dieselbe Seite u. a. zusätzlich unter /buchen/ aus, und bei
+ * mehreren Suchbegriffen taucht ein Event ohnehin mehrfach auf.
+ */
+if (!function_exists('kse_unique_links_by_identity')) {
+function kse_unique_links_by_identity(array $links, string $slug = ''): array {
+    if (!function_exists('kse_ei_source_uid')) {
+        return array_values(array_unique($links));
+    }
+    $best = [];
+    foreach ($links as $u) {
+        $u = trim((string)$u);
+        if ($u === '') continue;
+        $uid = kse_ei_source_uid($u, $slug);
+        if ($uid === '') continue;
+
+        // Zusatzpfade wie /buchen/ nur nehmen, wenn es die Seite nicht direkt gibt
+        $is_extra = (bool)preg_match('~/(buchen|drucken|merken|merkzettel|weiterempfehlen)/~i', $u);
+        if (!isset($best[$uid]) || (!$is_extra && $best[$uid]['extra'])) {
+            $best[$uid] = ['url' => $u, 'extra' => $is_extra];
+        }
+    }
+    return array_values(array_map(static fn($e) => $e['url'], $best));
+}}
 
 add_action('kse_cron_empore', 'kse_cron_run_empore');
 function kse_cron_run_empore() {
     if (!function_exists('kse_tec_upsert_event')) return;
     if (!class_exists('EmporeBuchholzParser')) return;
 
-    $events = EmporeBuchholzParser::crawl(['limit'=>50]);
-    if (!is_array($events)) return;
-
-    $scanned = count($events); $created=$updated=$skipped=0;
-    foreach ($events as $ev) {
-        $u = $ev['source_url'] ?? ($ev['source'] ?? '');
-        if (!$u) { $skipped++; continue; }
-        $res = kse_tec_upsert_event([
-            'title'       => $ev['title'] ?? '',
-            'start'       => $ev['start'] ?? ($ev['datetime'] ?? ''),
-            'end'         => $ev['end'] ?? '',
-            'datetime'    => $ev['datetime'] ?? '',
-            'description' => $ev['description'] ?? '',
-            'location'    => $ev['location'] ?? '',
-            'image'       => $ev['image'] ?? '',
-            'source_url'  => $u,
-        ], [
-            'default_duration_minutes' => 120,
-            'category'                 => 'Empore Buchholz',
-        ]);
-        $post_id = (int)($res['post_id'] ?? 0);
-        if ($post_id > 0) {
-            kse_force_event_category($post_id, 'Empore Buchholz', ['Gemeinde Seevetal']);
+    if (function_exists('kse_lock_acquire') && !kse_lock_acquire('empore')) {
+        if (function_exists('kse_stats_log')) {
+            kse_stats_log('EMPORE', ['scanned'=>0,'created'=>0,'updated'=>0,'skipped'=>0,'note'=>'Lauf übersprungen: vorheriger Lauf noch aktiv']);
         }
-
-        if (($res['action'] ?? '') === 'updated') $updated++;
-        elseif (($res['action'] ?? '') === 'created') $created++;
-        else $skipped++;
+        return;
     }
 
-    if (function_exists('kse_stats_log')) {
-        kse_stats_log('EMPORE', compact('scanned','created','updated','skipped'));
+    try {
+        $events = EmporeBuchholzParser::crawl(['limit'=>50]);
+        if (!is_array($events)) return;
+
+        $scanned = count($events); $created=$updated=$skipped=0;
+        foreach ($events as $ev) {
+            $u = $ev['source_url'] ?? ($ev['source'] ?? '');
+            if (!$u) { $skipped++; continue; }
+            $res = kse_tec_upsert_event([
+                'title'       => $ev['title'] ?? '',
+                'start'       => $ev['start'] ?? ($ev['datetime'] ?? ''),
+                'end'         => $ev['end'] ?? '',
+                'datetime'    => $ev['datetime'] ?? '',
+                'description' => $ev['description'] ?? '',
+                'location'    => $ev['location'] ?? '',
+                'image'       => $ev['image'] ?? '',
+                'source_url'  => $u,
+            ], [
+                'default_duration_minutes' => 120,
+                'source_slug'              => 'empore',
+                'source_category'          => 'Empore Buchholz',
+            ]);
+            $post_id = (int)($res['post_id'] ?? 0);
+            if ($post_id > 0) {
+                kse_force_event_category($post_id, 'Empore Buchholz', ['Gemeinde Seevetal']);
+            }
+
+            if (($res['action'] ?? '') === 'updated') $updated++;
+            elseif (($res['action'] ?? '') === 'created') $created++;
+            else $skipped++;
+        }
+
+        if (function_exists('kse_stats_log')) {
+            kse_stats_log('EMPORE', compact('scanned','created','updated','skipped'));
+        }
+    } finally {
+        if (function_exists('kse_lock_release')) kse_lock_release('empore');
     }
 }
 
@@ -320,39 +386,51 @@ function kse_cron_run_empore() {
             return;
         }
 
-        $events  = KulturvereinWinsenParser::crawl(['limit' => 0]);
-        $scanned = is_array($events) ? count($events) : 0;
-        $created = $updated = $skipped = 0;
-
-        foreach ((array)$events as $ev) {
-            $src = $ev['source_url'] ?? '';
-            if (!$src) { $skipped++; continue; }
-
-            $res = kse_tec_upsert_event([
-                'title'       => $ev['title'] ?? '',
-                'start'       => $ev['start'] ?? ($ev['datetime'] ?? ''),
-                'description' => $ev['description'] ?? '',
-                'location'    => $ev['location'] ?? '',
-                'image'       => $ev['image'] ?? '',
-                'source_url'  => $src,
-            ], [
-                'default_duration_minutes' => 120,
-                'category'                 => 'Kulturverein Winsen',
-            ]);
-            // **NEU – Kategorie erzwingen & falsche entfernen**
-            $post_id = (int)($res['post_id'] ?? 0);
-            if ($post_id > 0) {
-                kse_force_event_category($post_id, 'Kulturverein Winsen', ['Gemeinde Seevetal']);
+        if (function_exists('kse_lock_acquire') && !kse_lock_acquire('winsen')) {
+            if (function_exists('kse_stats_log')) {
+                kse_stats_log('WINSEN', ['scanned'=>0,'created'=>0,'updated'=>0,'skipped'=>0,'blacklisted'=>0,'note'=>'Lauf übersprungen: vorheriger Lauf noch aktiv']);
             }
-
-            $act = $res['action'] ?? '';
-            if ($act === 'created')      { $created++; }
-            elseif ($act === 'updated')  { $updated++; }
-            else                         { $skipped++; }
+            return;
         }
 
-        if (function_exists('kse_stats_log')) {
-            kse_stats_log('WINSEN', compact('scanned','created','updated','skipped') + ['blacklisted'=>0]);
+        try {
+            $events  = KulturvereinWinsenParser::crawl(['limit' => 0]);
+            $scanned = is_array($events) ? count($events) : 0;
+            $created = $updated = $skipped = 0;
+
+            foreach ((array)$events as $ev) {
+                $src = $ev['source_url'] ?? '';
+                if (!$src) { $skipped++; continue; }
+
+                $res = kse_tec_upsert_event([
+                    'title'       => $ev['title'] ?? '',
+                    'start'       => $ev['start'] ?? ($ev['datetime'] ?? ''),
+                    'description' => $ev['description'] ?? '',
+                    'location'    => $ev['location'] ?? '',
+                    'image'       => $ev['image'] ?? '',
+                    'source_url'  => $src,
+                ], [
+                    'default_duration_minutes' => 120,
+                    'source_slug'              => 'winsen',
+                    'source_category'          => 'Kulturverein Winsen',
+                ]);
+                // Kategorie erzwingen & falsche entfernen
+                $post_id = (int)($res['post_id'] ?? 0);
+                if ($post_id > 0) {
+                    kse_force_event_category($post_id, 'Kulturverein Winsen', ['Gemeinde Seevetal']);
+                }
+
+                $act = $res['action'] ?? '';
+                if ($act === 'created')      { $created++; }
+                elseif ($act === 'updated')  { $updated++; }
+                else                         { $skipped++; }
+            }
+
+            if (function_exists('kse_stats_log')) {
+                kse_stats_log('WINSEN', compact('scanned','created','updated','skipped') + ['blacklisted'=>0]);
+            }
+        } finally {
+            if (function_exists('kse_lock_release')) kse_lock_release('winsen');
         }
     }
 
@@ -374,6 +452,12 @@ if (!function_exists('kse_admin_run_source')) {
         ];
 
         if (isset($map[$src])) {
+            // Ein hängengebliebener Lock (abgebrochener Cron-Lauf) darf den
+            // manuellen Start nicht stillschweigend blockieren.
+            if (function_exists('kse_lock_age') && function_exists('kse_lock_break')) {
+                $age = kse_lock_age($src);
+                if ($age >= 0 && $age > 300) kse_lock_break($src);
+            }
             do_action($map[$src]); // Parser sofort ausführen
             $redirect = wp_get_referer() ?: admin_url('admin.php?page=kse_settings');
             wp_safe_redirect(add_query_arg(['kse-run-done' => $src], $redirect));

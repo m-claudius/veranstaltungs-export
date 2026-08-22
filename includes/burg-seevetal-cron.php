@@ -29,8 +29,24 @@ function kse_cron_run_burg() {
         return;
     }
 
+    if (function_exists('kse_lock_acquire') && !kse_lock_acquire('burg')) {
+        if (function_exists('kse_stats_log')) {
+            kse_stats_log('BURG', [
+                'scanned' => 0, 'created' => 0, 'updated' => 0,
+                'skipped' => 0, 'blacklisted' => 0, 'duplicates' => 0,
+                'note' => 'Lauf übersprungen: vorheriger Lauf noch aktiv',
+            ]);
+        }
+        return;
+    }
+
+    try {
+
     $parser = new BurgSeevetalParser();
     $links  = $parser->collect_all_detail_links(10);
+    if (function_exists('kse_unique_links_by_identity')) {
+        $links = kse_unique_links_by_identity($links, 'burg');
+    }
 
     $scanned = count($links);
     $created = $updated = $skipped = $duplicates = 0;
@@ -101,6 +117,10 @@ function kse_cron_run_burg() {
     }
 
     error_log("[KSE-Burg] Cron fertig: scanned=$scanned created=$created updated=$updated skipped=$skipped duplicates=$duplicates");
+
+    } finally {
+        if (function_exists('kse_lock_release')) kse_lock_release('burg');
+    }
 }
 
 /* =========================================================

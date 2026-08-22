@@ -79,6 +79,10 @@ function kse_register_menu(){
     if (function_exists('kse_render_stats_admin')){
         add_submenu_page('kse-dashboard', 'Statistik', 'Statistik', $cap, 'kse-stats', 'kse_render_stats_admin');
     }
+    // Dubletten-Diagnose & Bereinigung
+    if (function_exists('kse_render_dubletten')){
+        add_submenu_page('kse-dashboard', 'Dubletten', 'Dubletten', $cap, 'kse-dubletten', 'kse_render_dubletten');
+    }
 }
 
 /* =========================================================

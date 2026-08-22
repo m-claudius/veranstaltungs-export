@@ -71,7 +71,11 @@ function kse_render_seevetal() {
                 }
                 $all_links = array_merge($all_links, $term_links);
             }
-            $all_links = array_values(array_unique($all_links));
+            // Genauso entdoppeln wie der Import: Nolis liefert dieselbe
+            // Veranstaltung zusätzlich unter /buchen/ aus.
+            $all_links = function_exists('kse_unique_links_by_identity')
+                ? kse_unique_links_by_identity($all_links, 'seevetal')
+                : array_values(array_unique($all_links));
 
             // Blacklist anwenden
             $blacklisted = 0;

@@ -20,60 +20,88 @@ if (!defined('ABSPATH')) exit;
  * $opts: [
  *   'default_duration_minutes' => int (Standard 120),
  *   'source_slug'              => string (z.B. 'empore'),
- *   'source_category'          => string (z.B. 'Empore Buchholz'),
+ *   'source_category'          => string (z.B. 'Empore Buchholz'), Alias: 'category'
  * ]
  *
  * Rückgabe:
- *   ['action'=>'created'|'updated'|'skipped_*'|'error', 'post_id'=>int, 'permalink'=>string, 'reason'?(string)]
+ *   [
+ *     'action'     => 'created' | 'updated'
+ *                   | 'skipped_guard'              (fremde Quelle / _kse_protect)
+ *                   | 'skipped_trashed'            (Treffer liegt im Papierkorb)
+ *                   | 'skipped_duplicate_in_run'   (UID in diesem Lauf schon verarbeitet)
+ *                   | 'skipped_no_date'            (kein verwertbares Startdatum)
+ *                   | 'error',
+ *     'post_id'    => int,
+ *     'permalink'  => string,
+ *     'matched_by' => string  (wie der Bestandstreffer gefunden wurde),
+ *     'duplicates' => int[]   (weitere Posts derselben Identität),
+ *     'reason'     => string  (nur bei skipped_... und error)
+ *   ]
+ *
+ * Idempotenz läuft über _kse_source_uid (siehe includes/event-identity.php),
+ * nicht mehr über die Detail-URL allein.
  */
 
 
 /* ============================ Helpers ============================ */
 
-/** Normiert Datum/Zeit in lokale WP-Zeit (Y-m-d H:i:s) */
+/**
+ * Normiert Datum/Zeit in lokale WP-Zeit (Y-m-d H:i:s).
+ *
+ * Achtung, alter Fehler: strtotime() + date_i18n() haben den GMT-Offset ein
+ * zweites Mal addiert - aus 19:30 wurde 21:30, und über den Sommerzeit-Wechsel
+ * hinweg verschob sich derselbe Termin um eine Stunde. Deshalb hier durchgängig
+ * DateTime mit wp_timezone(): Strings ohne Zeitzonen-Angabe gelten als WP-Zeit,
+ * Strings mit Offset (ISO 8601 aus JSON-LD) werden korrekt umgerechnet.
+ *
+ * Liefert '' wenn nichts Verwertbares drinsteht - bewusst kein "jetzt"-Fallback,
+ * sonst landen undatierte Treffer als Event zur Importzeit im Kalender und
+ * erzeugen bei jedem Lauf einen neuen Eintrag.
+ */
 if (!function_exists('kse_normalize_datetime_local')) {
 function kse_normalize_datetime_local($in) {
-    $in = (string)$in;
-    if ($in === '') return date_i18n('Y-m-d H:i:s', current_time('timestamp'));
-    $ts = strtotime($in);
-    if (!$ts) $ts = current_time('timestamp');
-    return date_i18n('Y-m-d H:i:s', $ts);
+    $in = trim((string)$in);
+    if ($in === '') return '';
+
+    $tz = function_exists('wp_timezone') ? wp_timezone() : new DateTimeZone('Europe/Berlin');
+    try {
+        $dt = new DateTime($in, $tz);
+    } catch (\Throwable $e) {
+        return '';
+    }
+    $dt->setTimezone($tz);
+
+    $out = $dt->format('Y-m-d H:i:s');
+    // "0000-00-00 ..." und ähnliche Platzhalter der Quellen aussortieren
+    if (strpos($out, '0000-') === 0 || strpos($out, '-0001-') !== false) return '';
+    return $out;
 }}
 
-/** Post per exaktem Meta finden */
+/**
+ * Post per exaktem Meta finden.
+ *
+ * Direkt per SQL statt WP_Query: The Events Calendar filtert jede WP_Query auf
+ * 'tribe_events' (Custom Tables, Datumsfilter, Occurrence-IDs), und
+ * post_status => 'any' schließt den Papierkorb aus. Beides hat dazu geführt,
+ * dass bereits importierte Events nicht gefunden und neu angelegt wurden.
+ */
 if (!function_exists('kse_find_event_by_meta')) {
 function kse_find_event_by_meta($key, $value) {
-    $q = new WP_Query([
-        'post_type'      => 'tribe_events',
-        'post_status'    => 'any',
-        'posts_per_page' => 1,
-        'no_found_rows'  => true,
-        'meta_query'     => [[ 'key'=>$key, 'value'=>$value ]],
-        'fields'         => 'ids',
-    ]);
-    return $q->have_posts() ? (int)$q->posts[0] : 0;
+    if (!function_exists('kse_ei_ids_by_meta')) return 0;
+    $ids = kse_ei_ids_by_meta((string)$key, (string)$value);
+    return $ids ? (int)$ids[0] : 0;
 }}
 
-/** Post per (Title + Start) finden */
+/** Post per (Title + Start) finden - ebenfalls per SQL, inkl. Papierkorb */
 if (!function_exists('kse_find_event_by_title_and_start')) {
 function kse_find_event_by_title_and_start($title, $start) {
+    if (!function_exists('kse_ei_ids_by_title_start')) return 0;
     $title = trim((string)$title);
     $start = kse_normalize_datetime_local($start);
     if ($title === '' || $start === '') return 0;
 
-    $q = new WP_Query([
-        'post_type'      => 'tribe_events',
-        'post_status'    => 'any',
-        'posts_per_page' => 25,
-        'no_found_rows'  => true,
-        'meta_query'     => [[ 'key'=>'_EventStartDate', 'value'=>$start ]],
-        'fields'         => 'ids',
-    ]);
-    if (!$q->have_posts()) return 0;
-    foreach ($q->posts as $pid) {
-        if (strcasecmp(get_the_title($pid), $title) === 0) return (int)$pid;
-    }
-    return 0;
+    $ids = kse_ei_ids_by_title_start($title, $start, false);
+    return $ids ? (int)$ids[0] : 0;
 }}
 
 /** "Darf überschrieben werden?" – einfacher Guard */
@@ -172,30 +200,69 @@ function kse_tec_upsert_event(array $payload, array $opts = []) {
     $srcUrl = esc_url_raw((string)($payload['source_url'] ?? ''));
 
     $source_slug    = sanitize_key((string)($opts['source_slug'] ?? ''));
-    $source_catname = trim((string)($opts['source_category'] ?? ''));
+    // 'category' wird von den Cron-Runnern historisch als Schlüssel benutzt
+    $source_catname = trim((string)($opts['source_category'] ?? ($opts['category'] ?? '')));
     $duration       = (int)($opts['default_duration_minutes'] ?? 120);
 
     if ($title === '') return ['action'=>'error', 'reason'=>'missing_title'];
-    if ($start === '') $start = date_i18n('Y-m-d H:i:s', current_time('timestamp'));
+
+    // Ohne brauchbares Startdatum wird nichts angelegt: früher wurde in diesem
+    // Fall "jetzt" eingesetzt, und jeder Lauf erzeugte ein weiteres Event.
+    if ($start === '') {
+        return ['action'=>'skipped_no_date', 'post_id'=>0, 'reason'=>'unparsable_start'];
+    }
 
     // Endzeit bestimmen
     $end = '';
     if ($endIn !== '') {
         $end = kse_normalize_datetime_local($endIn);
-    } else {
+    }
+    if ($end === '' || strtotime($end) <= strtotime($start)) {
+        // Quellen liefern gelegentlich ein Ende vor dem Start (z. B. 00:00 Uhr)
         $endTs = strtotime($start) + max(1, $duration) * 60;
-        $end   = date_i18n('Y-m-d H:i:s', $endTs);
+        $end   = date('Y-m-d H:i:s', $endTs);
     }
 
     // 1) Existierenden Event finden (Idempotenz)
-    $post_id = 0;
-    if ($srcUrl) {
-        $post_id = kse_find_event_by_meta('_kse_source_url', $srcUrl);
-        if (!$post_id) $post_id = kse_find_event_by_meta('_EventURL', $srcUrl);
+    //    Reihenfolge: stabile UID -> Quell-URL -> Nolis-ID -> Titel+Start.
+    //    Details und Begründung in includes/event-identity.php.
+    $match = function_exists('kse_ei_find_event')
+        ? kse_ei_find_event([
+            'source_url'  => $srcUrl,
+            'source_slug' => $source_slug,
+            'title'       => $title,
+            'start'       => $start,
+          ])
+        : ['post_id'=>0, 'uid'=>'', 'matched_by'=>'', 'duplicates'=>[], 'status'=>''];
+
+    $post_id = (int)$match['post_id'];
+    $uid     = (string)$match['uid'];
+
+    // 1b) Schutz gegen Doppelverarbeitung innerhalb eines Laufs:
+    //     Nolis liefert dieselbe Veranstaltung mehrfach (u. a. unter /buchen/),
+    //     und zwei parallel laufende Cron-Durchläufe würden sonst beide anlegen.
+    static $seen_uids = [];
+    if ($uid !== '') {
+        if (isset($seen_uids[$uid]) && !$post_id) {
+            return [
+                'action'    => 'skipped_duplicate_in_run',
+                'post_id'   => (int)$seen_uids[$uid],
+                'permalink' => get_permalink((int)$seen_uids[$uid]),
+                'reason'    => 'uid_bereits_in_diesem_lauf_verarbeitet',
+            ];
+        }
     }
-    if (!$post_id) {
-        $maybe = kse_find_event_by_title_and_start($title, $start);
-        if ($maybe) $post_id = $maybe;
+
+    // 1c) Treffer liegt im Papierkorb: nicht neu anlegen und nicht wiederbeleben.
+    if ($post_id && $match['status'] === 'trash') {
+        if ($uid !== '') $seen_uids[$uid] = $post_id;
+        if (function_exists('kse_ei_backfill_uid')) kse_ei_backfill_uid($post_id, $srcUrl, $source_slug);
+        return [
+            'action'    => 'skipped_trashed',
+            'post_id'   => $post_id,
+            'permalink' => get_permalink($post_id),
+            'reason'    => 'im_papierkorb',
+        ];
     }
 
     // 2) Guard
@@ -300,6 +367,11 @@ function kse_tec_upsert_event(array $payload, array $opts = []) {
     if ($srcUrl) {
         update_post_meta($post_id, '_kse_source_url', $srcUrl);
         update_post_meta($post_id, '_EventURL',       $srcUrl);
+        // Stabile Identität schreiben - darüber läuft die Prüfung beim nächsten Lauf
+        if (function_exists('kse_ei_backfill_uid')) {
+            $uid = kse_ei_backfill_uid($post_id, $srcUrl, $source_slug);
+        }
+        if ($uid !== '') $seen_uids[$uid] = $post_id;
     }
     // Date-Metas (failsafe)
     if (!get_post_meta($post_id, '_EventStartDate', true)) {
@@ -353,9 +425,19 @@ function kse_tec_upsert_event(array $payload, array $opts = []) {
     // 10) TEC-Index/Caches aktualisieren -> Permalink sofort funktionsfähig (keine 404)
     kse_trigger_tec_index($post_id, $is_update);
 
+    // 11) Auch die Alt-Dubletten derselben Identität bekommen die UID, damit die
+    //     Bereinigung sie als eine Gruppe erkennt.
+    if (!empty($match['duplicates']) && $uid !== '') {
+        foreach ($match['duplicates'] as $dup_id) {
+            update_post_meta((int)$dup_id, '_kse_source_uid', $uid);
+        }
+    }
+
     return [
-        'action'    => $is_update ? 'updated' : 'created',
-        'post_id'   => $post_id,
-        'permalink' => get_permalink($post_id),
+        'action'     => $is_update ? 'updated' : 'created',
+        'post_id'    => $post_id,
+        'permalink'  => get_permalink($post_id),
+        'matched_by' => (string)($match['matched_by'] ?? ''),
+        'duplicates' => array_map('intval', (array)($match['duplicates'] ?? [])),
     ];
 }}
