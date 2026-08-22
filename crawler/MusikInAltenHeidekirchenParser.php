@@ -177,6 +177,19 @@ class MusikInAltenHeidekirchenParser
             }
         }
 
+        // === Klickbaren Quellenlink an die Beschreibung anhängen ===
+        $host = parse_url($url, PHP_URL_HOST);
+        $srcLink = '<p><em>Quelle: (C) <a href="' . esc_url($url) . '" target="_blank" rel="noopener">' . esc_html($host ?: $url) . '</a></em></p>';
+
+        // Falls $desc bisher nur Plaintext ist, einmal in <p> einpacken
+        if ($desc !== '' && strip_tags($desc) === $desc) {
+            $desc = '<p>' . esc_html($desc) . '</p>';
+        }
+
+        // Link anhängen
+        $desc = $desc . "\n" . $srcLink;
+
+
         return [
             'source'      => 'Musik in alten Heidekirchen',
             'source_url'  => $url,

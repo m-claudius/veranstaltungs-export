@@ -20,6 +20,8 @@ require_once KSE_PLUGIN_DIR . 'admin/settings.php';
 require_once KSE_PLUGIN_DIR . 'includes/tec_import.php';
 require_once KSE_PLUGIN_DIR . 'includes/stats.php';
 require_once KSE_PLUGIN_DIR . 'includes/dedupe.php';
+require_once KSE_PLUGIN_DIR . 'crawler/KulturvereinWinsenParser.php';
+
 
 class SeevetalExporter {
     private $option_name = 've_search_terms';
@@ -153,6 +155,8 @@ public function __construct() {
         }
         return $found;
     }
+
+    
 }
 
 new SeevetalExporter();

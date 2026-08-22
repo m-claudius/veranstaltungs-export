@@ -24,20 +24,29 @@ class EmporeBuchholzParser {
     public static function crawl($args = []) {
         $self    = new self();
         $listUrl = isset($args['list_url']) && is_string($args['list_url']) && $args['list_url'] ? $args['list_url'] : self::LIST_URL;
-        $limit   = isset($args['limit']) ? max(1, intval($args['limit'])) : 10; // Test: 10
+        $limit = isset($args['limit']) ? intval($args['limit']) : 0;
+        $unlimited = ($limit <= 0);
+        if (!$unlimited) { $limit = max(1, $limit); }
 
         $links = $self->collect_detail_links($listUrl);
-        if (count($links) > $limit) $links = array_slice($links, 0, $limit);
+        if (!$unlimited && count($links) > $limit) {
+            $links = array_slice($links, 0, $limit);
+        }
 
         $events = [];
         foreach ($links as $u) {
             foreach ($self->parse_detail($u) as $ev) {
-                if (!empty($ev['title']) || !empty($ev['start'])) $events[] = $ev;
+                if (!empty($ev['title']) || !empty($ev['start'])) {
+                    $events[] = $ev;
+                }
             }
-            if (count($events) >= $limit) break;
+            if (!$unlimited && count($events) >= $limit) break;
         }
-        return array_slice($events, 0, $limit);
+
+        return $unlimited ? $events : array_slice($events, 0, $limit);
+
     }
+
 
     /** ========== LISTENSEITE: Links finden ========== */
     public function collect_detail_links($url) {
