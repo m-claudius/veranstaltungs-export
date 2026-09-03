@@ -1,6 +1,6 @@
 # Veranstaltungs-Export
 
-**Version 2.2.0**
+**Version 2.2.1**
 
 WordPress-Plugin für die Webseite der Kulturstiftung: crawlt Veranstaltungen
 externer Quellen und legt sie in The Events Calendar (TEC) an.
@@ -65,6 +65,19 @@ Menü **Veranstaltungs-Export**:
 * **Statistik** – was der letzte Lauf gefunden/angelegt/übersprungen hat
 * **Dubletten** – Kennzahlen, Dubletten-Gruppen, „Kennungen nachtragen“,
   „Alle Dubletten zusammenführen“ (überzählige Einträge wandern in den Papierkorb)
+  und „Preisangabe ‚Kostenlos‘ entfernen“
+
+## Preisangabe „Kostenlos“
+
+The Events Calendar schreibt „Kostenlos“ in den Kopf der Event-Seite, sobald
+das Preisfeld (`_EventCost`) den Wert `0` enthält; ein leeres Feld zeigt gar
+nichts an. Beim Anlegen über die TEC-ORM landet dort eine Null, obwohl der
+Preis aus der Quelle nicht bekannt ist.
+
+Der Importer übernimmt einen gelieferten Preis (`cost` im Payload), entfernt
+eine reine Null und lässt von Hand eingetragene Werte in Ruhe. Für den
+Alt-Bestand gibt es den Knopf auf der Dubletten-Seite; er fasst nur Events mit
+Quell-Kennung an.
 
 ## Entwicklung
 
@@ -84,6 +97,11 @@ Deploy: Dateien per FTP auf STRATO überschreiben (PHP 8.4). Bei hartnäckigem
 OPcache den Plugin-Ordner kurz umbenennen.
 
 ## Changelog
+
+### 2.2.1
+* Falsche Preisangabe „Kostenlos“: Importer schreibt keine Null mehr ins
+  Preisfeld und räumt vorhandene Nullwerte beim nächsten Lauf weg. Neuer
+  Payload-Schlüssel `cost`, neuer Aufräum-Knopf auf der Dubletten-Seite.
 
 ### 2.2.0
 * Dubletten-Ursachen behoben: stabile Quell-Kennung (`_kse_source_uid`),

@@ -15,6 +15,8 @@ if (!defined('ABSPATH')) exit;
  *   'location'    => string (optional),
  *   'image'       => string URL (optional),
  *   'source_url'  => string URL (optional, für Idempotenz & Quelle),
+ *   'cost'        => string (optional, z.B. "12" oder "Eintritt frei";
+ *                    leer = kein Preis bekannt, dann wird nichts behauptet),
  * ]
  *
  * $opts: [
@@ -385,6 +387,23 @@ function kse_tec_upsert_event(array $payload, array $opts = []) {
     // 5) Source-Tag
     if ($source_slug !== '') {
         update_post_meta($post_id, '_kse_source_slug', $source_slug);
+    }
+
+    // 5b) Preis
+    //
+    // The Events Calendar schreibt "Kostenlos" in den Kopf der Event-Seite,
+    // sobald _EventCost den Wert 0 enthält (leeres Feld = keine Anzeige).
+    // Beim Anlegen über die TEC-ORM landet dort eine 0, obwohl wir den Preis
+    // gar nicht kennen - die Seite behauptet dann etwas Falsches.
+    //
+    // Regel: gelieferten Preis übernehmen; eine reine Null entfernen;
+    // alles von Hand Eingetragene unangetastet lassen.
+    $cost     = trim((string)($payload['cost'] ?? ''));
+    $cur_cost = (string) get_post_meta($post_id, '_EventCost', true);
+    if ($cost !== '') {
+        update_post_meta($post_id, '_EventCost', $cost);
+    } elseif ($cur_cost !== '' && preg_match('~^0([.,]0+)?$~', $cur_cost)) {
+        delete_post_meta($post_id, '_EventCost');
     }
 
     // 6) Ort idempotent anhängen (wie von dir gewünscht)

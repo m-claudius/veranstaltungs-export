@@ -44,6 +44,33 @@ function kse_dub_stats(): array
     ];
 }}
 
+if (!function_exists('kse_dub_zero_cost_ids')) {
+/**
+ * Importierte Events, deren Preisfeld eine reine Null enthält.
+ *
+ * The Events Calendar zeigt dafür "Kostenlos" im Kopf der Event-Seite an,
+ * obwohl der Preis aus der Quelle gar nicht bekannt ist. Bewusst nur Events
+ * mit Quell-Kennung, damit von Hand gepflegte Termine unberührt bleiben.
+ *
+ * @return int[]
+ */
+function kse_dub_zero_cost_ids(): array
+{
+    global $wpdb;
+
+    $sql = "SELECT DISTINCT p.ID
+              FROM {$wpdb->posts} p
+              INNER JOIN {$wpdb->postmeta} c ON c.post_id = p.ID AND c.meta_key = '_EventCost'
+              INNER JOIN {$wpdb->postmeta} s ON s.post_id = p.ID
+                     AND s.meta_key IN ('_kse_source_url','_kse_source_uid')
+                     AND s.meta_value <> ''
+             WHERE p.post_type = 'tribe_events'
+               AND p.post_status IN ('publish','draft','pending','private','future')
+               AND TRIM(c.meta_value) REGEXP '^0([.,]0+)?$'";
+
+    return array_map('intval', (array) $wpdb->get_col($sql));
+}}
+
 /* =========================================================
  * Seite
  * =======================================================*/
@@ -69,6 +96,12 @@ function kse_render_dubletten()
             (int)($_GET['ergaenzt'] ?? 0)
         );
     }
+    if (isset($_GET['kse-cost-done'])) {
+        printf(
+            '<div class="notice notice-success is-dismissible"><p><strong>Preisfelder geleert.</strong> Betroffene Veranstaltungen: %d</p></div>',
+            (int)($_GET['geleert'] ?? 0)
+        );
+    }
     if (isset($_GET['kse-merge-done'])) {
         printf(
             '<div class="notice notice-success is-dismissible"><p><strong>Dubletten zusammengeführt.</strong> Gruppen: %d &nbsp;|&nbsp; in den Papierkorb verschoben: %d</p></div>',
@@ -85,6 +118,8 @@ function kse_render_dubletten()
     printf('<tr><td>davon mit Quell-URL <code>_kse_source_url</code></td><td><strong>%d</strong></td></tr>', $stats['mit_url']);
     printf('<tr><td>davon mit Quellen-Kürzel <code>_kse_source_slug</code></td><td><strong>%d</strong></td></tr>', $stats['mit_slug']);
     printf('<tr><td>im Papierkorb</td><td><strong>%d</strong></td></tr>', $stats['im_papierkorb']);
+    $zero_cost = count(kse_dub_zero_cost_ids());
+    printf('<tr><td>importierte Events mit Preis 0 (Anzeige „Kostenlos“)</td><td><strong>%d</strong></td></tr>', $zero_cost);
     echo '</tbody></table>';
 
     if ($stats['mit_url'] > $stats['mit_uid']) {
@@ -109,6 +144,16 @@ function kse_render_dubletten()
     echo '<a class="button" href="' . esc_url($trash_toggle) . '">'
         . ($include_trash ? 'Papierkorb ausblenden' : 'Papierkorb einbeziehen') . '</a>';
     echo '</p>';
+
+    if ($zero_cost > 0) {
+        $cost_url = wp_nonce_url(admin_url('admin-post.php?action=kse_clear_zero_cost'), 'kse_dubletten');
+        echo '<p>';
+        echo '<a class="button" href="' . esc_url($cost_url) . '" '
+            . 'onclick="return confirm(\'Bei ' . (int)$zero_cost . ' importierten Veranstaltungen das Preisfeld leeren? Damit verschwindet die Angabe „Kostenlos“.\')">'
+            . 'Preisangabe „Kostenlos“ entfernen (' . (int)$zero_cost . ')</a>';
+        echo ' <span class="description">Nur bei Events mit Quell-Kennung – von Hand gepflegte Preise bleiben stehen.</span>';
+        echo '</p>';
+    }
 
     // ── Gruppen ──
     printf('<h2>Dubletten-Gruppen: %d</h2>', count($groups));
@@ -176,6 +221,33 @@ function kse_admin_backfill_uids()
 
     wp_safe_redirect(add_query_arg(
         ['kse-uid-done' => 1, 'geprueft' => $geprueft, 'ergaenzt' => $ergaenzt],
+        admin_url('admin.php?page=kse-dubletten')
+    ));
+    exit;
+}}
+
+/* =========================================================
+ * Aktion: Preisangabe "Kostenlos" entfernen
+ * =======================================================*/
+
+if (!function_exists('kse_admin_clear_zero_cost')) {
+add_action('admin_post_kse_clear_zero_cost', 'kse_admin_clear_zero_cost');
+function kse_admin_clear_zero_cost()
+{
+    if (!current_user_can('manage_options')) wp_die('Insufficient permissions');
+    check_admin_referer('kse_dubletten');
+
+    $geleert = 0;
+    if (function_exists('kse_dub_zero_cost_ids')) {
+        foreach (kse_dub_zero_cost_ids() as $pid) {
+            delete_post_meta($pid, '_EventCost');
+            clean_post_cache($pid);
+            $geleert++;
+        }
+    }
+
+    wp_safe_redirect(add_query_arg(
+        ['kse-cost-done' => 1, 'geleert' => $geleert],
         admin_url('admin.php?page=kse-dubletten')
     ));
     exit;
