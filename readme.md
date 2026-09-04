@@ -93,8 +93,18 @@ Syntaxcheck über alle Dateien:
 docker run --rm -v "$PWD:/app" -w /app php:8.4-cli sh -c 'for f in $(find . -name "*.php"); do php -l "$f"; done'
 ```
 
-Deploy: Dateien per FTP auf STRATO überschreiben (PHP 8.4). Bei hartnäckigem
-OPcache den Plugin-Ordner kurz umbenennen.
+Deploy-ZIP bauen (Pfadtrenner müssen Slashes sein, `Compress-Archive` aus
+PowerShell schreibt Backslashes und das Entpacken auf dem Linux-Server scheitert):
+
+```bash
+git archive --format=zip --prefix=veranstaltungs-export/ HEAD \
+  admin assets crawler includes tests veranstaltungs-export.php readme.md \
+  -o veranstaltungs-export-<version>.zip
+```
+
+Einspielen: WordPress → Plugins → Plugin hinzufügen → Plugin hochladen → ZIP
+auswählen → installieren → aktivieren. Bei hartnäckigem OPcache (Version bleibt
+in der Plugin-Liste alt) den Plugin-Ordner kurz umbenennen.
 
 ## Changelog
 
