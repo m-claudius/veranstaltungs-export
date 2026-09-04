@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Veranstaltungs Export mit Tag‑Matching
  * Description: Crawlt Events von Gemeinde Seevetal, matched Tags und zeigt alle Properties inkl. Bild.
- * Version: 2.2.1
+ * Version: 2.2.2
  * Author: Matthias Clausen
  */
 

@@ -10,6 +10,10 @@ function sanitize_key($k) { return preg_replace('~[^a-z0-9_\-]~', '', strtolower
 function wp_strip_all_tags($s) { return strip_tags((string)$s); }
 function wp_timezone() { return new DateTimeZone('Europe/Berlin'); }
 
+/** Post-Status für kse_ei_order_by_status(); ID => Status, Vorgabe 'publish' */
+$GLOBALS['kse_test_post_status'] = [];
+function get_post_status($id) { return $GLOBALS['kse_test_post_status'][(int)$id] ?? 'publish'; }
+
 require_once __DIR__ . '/../includes/event-identity.php';
 require_once __DIR__ . '/../includes/tec_import.php';
 
@@ -69,6 +73,23 @@ check('Datum: UTC wird in WP-Zeit umgerechnet',
 check('Datum: leer bleibt leer', kse_normalize_datetime_local(''), '');
 check('Datum: Unsinn ergibt leer', kse_normalize_datetime_local('demnächst'), '');
 check('Datum: Nullwert ergibt leer', kse_normalize_datetime_local('0000-00-00 00:00:00'), '');
+
+/* ---------- Treffer-Reihenfolge: aktiver Eintrag vor Papierkorb ---------- */
+// Nach dem Zusammenführen bleibt der Eintrag mit Bild stehen - auch mit höherer ID.
+$GLOBALS['kse_test_post_status'] = [100 => 'trash', 200 => 'trash', 300 => 'publish'];
+check('Papierkorb-Leichen landen hinten',
+    kse_ei_order_by_status([300, 100, 200]), [300, 100, 200]);
+
+$GLOBALS['kse_test_post_status'] = [10 => 'publish', 20 => 'draft', 30 => 'trash'];
+check('Entwurf zählt als aktiv, nach ID sortiert',
+    kse_ei_order_by_status([30, 20, 10]), [10, 20, 30]);
+
+$GLOBALS['kse_test_post_status'] = [7 => 'trash', 8 => 'trash'];
+check('nur Papierkorb: Reihenfolge nach ID',
+    kse_ei_order_by_status([8, 7]), [7, 8]);
+
+$GLOBALS['kse_test_post_status'] = [];
+check('Doppelte IDs fallen raus', kse_ei_order_by_status([5, 5, 4]), [4, 5]);
 
 echo "\n$pass Prüfungen bestanden, $fail fehlgeschlagen\n";
 exit($fail > 0 ? 1 : 0);

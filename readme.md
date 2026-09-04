@@ -1,6 +1,6 @@
 # Veranstaltungs-Export
 
-**Version 2.2.1**
+**Version 2.2.2**
 
 WordPress-Plugin für die Webseite der Kulturstiftung: crawlt Veranstaltungen
 externer Quellen und legt sie in The Events Calendar (TEC) an.
@@ -53,8 +53,13 @@ hängt sich in jede Query auf `tribe_events` ein, und `post_status => 'any'`
 schließt den Papierkorb aus – gelöschte Events wurden dadurch bei jedem Lauf
 neu angelegt.
 
-Wird ein Treffer im Papierkorb gefunden, passiert nichts: kein neuer Eintrag,
-aber auch keine Wiederbelebung.
+Gibt es mehrere Treffer, gewinnt ein aktiver Eintrag vor einem im Papierkorb
+(`kse_ei_order_by_status()`). Das ist nach dem Zusammenführen von Dubletten
+wichtig: dort bleibt der Eintrag mit Bild stehen, auch wenn er eine höhere ID
+hat als die weggeräumten.
+
+Wird *nur* ein Treffer im Papierkorb gefunden, passiert nichts: kein neuer
+Eintrag, aber auch keine Wiederbelebung.
 
 ## Bedienung
 
@@ -107,6 +112,12 @@ auswählen → installieren → aktivieren. Bei hartnäckigem OPcache (Version b
 in der Plugin-Liste alt) den Plugin-Ordner kurz umbenennen.
 
 ## Changelog
+
+### 2.2.2
+* Nach dem Zusammenführen von Dubletten war der erste Treffer oft eine
+  Papierkorb-Leiche mit niedrigerer ID; der Import meldete `skipped_trashed`
+  und der sichtbare Termin wurde nie wieder aktualisiert. Treffer werden jetzt
+  so sortiert, dass aktive Einträge vor Papierkorb-Einträgen stehen.
 
 ### 2.2.1
 * Falsche Preisangabe „Kostenlos“: Importer schreibt keine Null mehr ins

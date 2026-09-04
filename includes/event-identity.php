@@ -226,6 +226,37 @@ function kse_ei_ids_by_title_start(string $title, string $start, bool $day_only 
  * Haupt-Lookup
  * =======================================================*/
 
+if (!function_exists('kse_ei_order_by_status')) {
+/**
+ * Sortiert Treffer so, dass ein aktiver Eintrag vor einem im Papierkorb steht,
+ * innerhalb beider Gruppen nach ID aufsteigend.
+ *
+ * Wichtig nach dem Zusammenführen von Dubletten: dort bleibt der Eintrag mit
+ * Bild stehen, auch wenn er eine höhere ID hat als die weggeräumten. Ohne
+ * diese Sortierung wäre der erste Treffer eine Papierkorb-Leiche, der Import
+ * meldete "skipped_trashed" - und der sichtbare Termin würde nie mehr
+ * aktualisiert.
+ *
+ * @param int[] $ids
+ * @return int[]
+ */
+function kse_ei_order_by_status(array $ids): array
+{
+    $ids = array_values(array_unique(array_map('intval', $ids)));
+    sort($ids);
+
+    $live = [];
+    $trash = [];
+    foreach ($ids as $id) {
+        if (get_post_status($id) === 'trash') {
+            $trash[] = $id;
+        } else {
+            $live[] = $id;
+        }
+    }
+    return array_merge($live, $trash);
+}}
+
 if (!function_exists('kse_ei_find_event')) {
 /**
  * Sucht ein bereits importiertes Event.
@@ -307,7 +338,7 @@ function kse_ei_find_event(array $args): array
 
     if (!$hits) return $res;
 
-    sort($hits);
+    $hits = kse_ei_order_by_status($hits);
     $res['post_id']    = (int)array_shift($hits);
     $res['duplicates'] = array_map('intval', $hits);
     $res['matched_by'] = $by;
