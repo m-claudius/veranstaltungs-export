@@ -1,6 +1,6 @@
 # Veranstaltungs-Export
 
-**Version 2.2.3**
+**Version 2.2.4**
 
 WordPress-Plugin für die Webseite der Kulturstiftung: crawlt Veranstaltungen
 externer Quellen und legt sie in The Events Calendar (TEC) an.
@@ -27,7 +27,6 @@ includes/tec_import.php       Upsert nach TEC (kse_tec_upsert_event)
 includes/run-lock.php         Überlappungsschutz für Crawler-Läufe
 includes/dedupe.php           Gruppieren und Zusammenführen von Dubletten
 includes/dubletten-admin.php  Admin-Seite "Dubletten" (Diagnose + Bereinigung)
-includes/tec-cost-display.php Anzeige "Kostenlos" unterdrücken
 includes/stats.php            Lauf-Statistik
 tests/test-identity.php       Logiktests ohne WordPress
 ```
@@ -94,10 +93,11 @@ Zwei Stellen greifen ein:
   (`cost` im Payload), entfernt eine reine Null und lässt von Hand eingetragene
   Werte in Ruhe. Für den Alt-Bestand gibt es den Knopf auf der Dubletten-Seite;
   er fasst nur Events mit Quell-Kennung an.
-* **Anzeige** (`includes/tec-cost-display.php`): ein Filter auf `tribe_get_cost`
-  unterdrückt jede Preisangabe, die sich zu null ausrechnet — auch bei
-  Veranstaltungen, die gar nicht importiert wurden. Echte Beträge bleiben
-  stehen. Abschaltbar über den Filter `kse_hide_zero_cost`.
+* **Anzeige**: liegt im Schwester-Plugin *TEC add ons*
+  (`includes/class-cost-display.php`, Einstellung unter *TEC add ons → Anzeige*).
+  Dort hängt ein Filter auf `tribe_get_cost`, der jede Preisangabe unterdrückt,
+  die sich zu null ausrechnet — auch bei Veranstaltungen, die gar nicht
+  importiert wurden.
 
 ## Entwicklung
 
@@ -127,6 +127,11 @@ auswählen → installieren → aktivieren. Bei hartnäckigem OPcache (Version b
 in der Plugin-Liste alt) den Plugin-Ordner kurz umbenennen.
 
 ## Changelog
+
+### 2.2.4
+* Die Anzeige-Unterdrückung von „Kostenlos“ ist ins Plugin *TEC add ons*
+  umgezogen (dort ab 1.7.0), wo die übrigen Darstellungs-Anpassungen für
+  The Events Calendar liegen. Der Importer räumt Nullwerte weiterhin selbst weg.
 
 ### 2.2.3
 * Anzeige „Kostenlos“ im Kopf der Event-Seite unterdrückt (Filter auf

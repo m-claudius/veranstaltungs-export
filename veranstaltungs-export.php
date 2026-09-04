@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Veranstaltungs Export mit Tag‑Matching
  * Description: Crawlt Events von Gemeinde Seevetal, matched Tags und zeigt alle Properties inkl. Bild.
- * Version: 2.2.3
+ * Version: 2.2.4
  * Author: Matthias Clausen
  */
 
@@ -30,7 +30,6 @@ require_once KSE_PLUGIN_DIR . 'includes/tec_import.php';
 require_once KSE_PLUGIN_DIR . 'includes/stats.php';
 require_once KSE_PLUGIN_DIR . 'includes/dedupe.php';
 require_once KSE_PLUGIN_DIR . 'includes/dubletten-admin.php';
-require_once KSE_PLUGIN_DIR . 'includes/tec-cost-display.php';
 require_once KSE_PLUGIN_DIR . 'crawler/KulturvereinWinsenParser.php';
 
 
