@@ -1,6 +1,6 @@
 # Veranstaltungs-Export
 
-**Version 2.2.2**
+**Version 2.2.3**
 
 WordPress-Plugin für die Webseite der Kulturstiftung: crawlt Veranstaltungen
 externer Quellen und legt sie in The Events Calendar (TEC) an.
@@ -27,6 +27,7 @@ includes/tec_import.php       Upsert nach TEC (kse_tec_upsert_event)
 includes/run-lock.php         Überlappungsschutz für Crawler-Läufe
 includes/dedupe.php           Gruppieren und Zusammenführen von Dubletten
 includes/dubletten-admin.php  Admin-Seite "Dubletten" (Diagnose + Bereinigung)
+includes/tec-cost-display.php Anzeige "Kostenlos" unterdrücken
 includes/stats.php            Lauf-Statistik
 tests/test-identity.php       Logiktests ohne WordPress
 ```
@@ -74,15 +75,29 @@ Menü **Veranstaltungs-Export**:
 
 ## Preisangabe „Kostenlos“
 
-The Events Calendar schreibt „Kostenlos“ in den Kopf der Event-Seite, sobald
-das Preisfeld (`_EventCost`) den Wert `0` enthält; ein leeres Feld zeigt gar
-nichts an. Beim Anlegen über die TEC-ORM landet dort eine Null, obwohl der
-Preis aus der Quelle nicht bekannt ist.
+Belegt im Quellcode von The Events Calendar 6.9.1:
 
-Der Importer übernimmt einen gelieferten Preis (`cost` im Payload), entfernt
-eine reine Null und lässt von Hand eingetragene Werte in Ruhe. Für den
-Alt-Bestand gibt es den Knopf auf der Dubletten-Seite; er fasst nur Events mit
-Quell-Kennung an.
+* `Tribe__Cost_Utils::maybe_replace_cost_with_free()` — ist der Preis numerisch
+  und formatiert sich zu `0.00`, wird daraus `esc_html__( 'Free', 'tribe-common' )`,
+  auf Deutsch „Kostenlos“.
+* `Tribe__Events__Cost_Utils::get_event_costs()` — leere Werte werden
+  herausgefiltert, ein leeres Preisfeld erzeugt also gar keine Ausgabe.
+
+Eine Null im Preis ist damit die einzige Quelle des Wortes. Sie kann von Hand
+eingetragen sein, beim Anlegen über die TEC-ORM entstehen oder von Event
+Tickets stammen, das bei Tickets und Reservierungen ohne Preis eine 0
+hinterlegt.
+
+Zwei Stellen greifen ein:
+
+* **Import** (`includes/tec_import.php`): übernimmt einen gelieferten Preis
+  (`cost` im Payload), entfernt eine reine Null und lässt von Hand eingetragene
+  Werte in Ruhe. Für den Alt-Bestand gibt es den Knopf auf der Dubletten-Seite;
+  er fasst nur Events mit Quell-Kennung an.
+* **Anzeige** (`includes/tec-cost-display.php`): ein Filter auf `tribe_get_cost`
+  unterdrückt jede Preisangabe, die sich zu null ausrechnet — auch bei
+  Veranstaltungen, die gar nicht importiert wurden. Echte Beträge bleiben
+  stehen. Abschaltbar über den Filter `kse_hide_zero_cost`.
 
 ## Entwicklung
 
@@ -112,6 +127,11 @@ auswählen → installieren → aktivieren. Bei hartnäckigem OPcache (Version b
 in der Plugin-Liste alt) den Plugin-Ordner kurz umbenennen.
 
 ## Changelog
+
+### 2.2.3
+* Anzeige „Kostenlos“ im Kopf der Event-Seite unterdrückt (Filter auf
+  `tribe_get_cost`), auch bei nicht importierten Veranstaltungen und bei
+  Reservierungen ohne Preis. Echte Beträge bleiben stehen.
 
 ### 2.2.2
 * Nach dem Zusammenführen von Dubletten war der erste Treffer oft eine

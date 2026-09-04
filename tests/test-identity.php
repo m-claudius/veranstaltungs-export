@@ -14,8 +14,11 @@ function wp_timezone() { return new DateTimeZone('Europe/Berlin'); }
 $GLOBALS['kse_test_post_status'] = [];
 function get_post_status($id) { return $GLOBALS['kse_test_post_status'][(int)$id] ?? 'publish'; }
 
+function add_filter($hook, $cb, $prio = 10, $args = 1) { return true; }
+
 require_once __DIR__ . '/../includes/event-identity.php';
 require_once __DIR__ . '/../includes/tec_import.php';
+require_once __DIR__ . '/../includes/tec-cost-display.php';
 
 $pass = 0; $fail = 0;
 function check(string $label, $actual, $expected) {
@@ -90,6 +93,20 @@ check('nur Papierkorb: Reihenfolge nach ID',
 
 $GLOBALS['kse_test_post_status'] = [];
 check('Doppelte IDs fallen raus', kse_ei_order_by_status([5, 5, 4]), [4, 5]);
+
+/* ---------- Preisangabe: was gilt als "kostenlos"? ---------- */
+check('Preis: nackte Null',        kse_cost_reads_as_free('0', 'Kostenlos'), true);
+check('Preis: 0,00 mit Währung',   kse_cost_reads_as_free('0,00 €', 'Kostenlos'), true);
+check('Preis: 0.00 mit Symbol',    kse_cost_reads_as_free('$0.00', 'Kostenlos'), true);
+check('Preis: übersetztes Wort',   kse_cost_reads_as_free('Kostenlos', 'Kostenlos'), true);
+check('Preis: englisches Free',    kse_cost_reads_as_free('Free', 'Free'), true);
+
+check('Preis: leer bleibt unberührt', kse_cost_reads_as_free('', 'Kostenlos'), false);
+check('Preis: echter Betrag',      kse_cost_reads_as_free('15 €', 'Kostenlos'), false);
+check('Preis: Dezimalbetrag',      kse_cost_reads_as_free('12,50 €', 'Kostenlos'), false);
+check('Preis: Spanne mit Betrag',  kse_cost_reads_as_free('Kostenlos – 20,00 €', 'Kostenlos'), false);
+check('Preis: Text ohne Zahl',     kse_cost_reads_as_free('Eintritt frei', 'Kostenlos'), false);
+check('Preis: Spende',             kse_cost_reads_as_free('Spende erbeten', 'Kostenlos'), false);
 
 echo "\n$pass Prüfungen bestanden, $fail fehlgeschlagen\n";
 exit($fail > 0 ? 1 : 0);
